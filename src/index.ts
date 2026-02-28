@@ -100,7 +100,7 @@ function hasInvisibleCharacters(str: string): boolean {
 
 // Utility to check restricted username keywords
 function hasRestrictedKeywords(username: string): boolean {
-	const restricted = ['管理', 'admin', 'sudo', 'acofork', '二叉树树', '胡丁','huding'];
+	const restricted = ['管理', 'admin', 'sudo', 'test'];
 	return restricted.some(keyword => username.toLowerCase().includes(keyword.toLowerCase()));
 }
 
@@ -1764,130 +1764,6 @@ const user = await env.cforum_db.prepare('SELECT * FROM users WHERE email_change
 				return handleError(e);
 			}
 		}
-
-// 		// POST /api/posts/:id/comments
-// 		if (url.pathname.match(/^\/api\/posts\/\d+\/comments$/) && method === 'POST') {
-// 			const postId = url.pathname.split('/')[3];
-// 				const userPayload = await authenticate(request);
-// 				const body = await request.json() as any;
-// 
-// 				// Turnstile Check
-// 				const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
-// 				if (!(await checkTurnstile(body, ip))) {
-// 					return jsonResponse({ error: 'Turnstile verification failed' }, 403);
-// 				}
-// 
-// 				let { content, parent_id } = body;
-// 				// user_id comes from token now
-// 				
-// 				if (!content) return jsonResponse({ error: 'Missing parameters' }, 400);
-// 				
-// 				// --- Input Sanitization & Validation (Sync with Frontend) ---
-// 				// 1. Visually Empty Check
-// 				if (isVisuallyEmpty(content)) return jsonResponse({ error: 'Comment cannot be empty' }, 400);
-// 				
-// 				// 2. Invisible Characters Check
-// 				if (hasInvisibleCharacters(content)) return jsonResponse({ error: 'Comment contains invalid invisible characters' }, 400);
-// 				
-// 				// 3. Length Check
-// 				if (content.length > 3000) return jsonResponse({ error: 'Comment too long (Max 3000 chars)' }, 400);
-// 				
-// 				// 4. Control Characters Check
-// 				if (hasControlCharacters(content)) return jsonResponse({ error: 'Comment contains invalid control characters' }, 400);
-// 
-// 				// 5. HTML Escape (Basic XSS Prevention - though we use textContent in DB, escaping here is safer)
-// 				content = content
-// 					.replace(/&/g, '&amp;')
-// 					.replace(/</g, '&lt;')
-// 					.replace(/>/g, '&gt;')
-// 					.replace(/"/g, '&quot;')
-// 					.replace(/'/g, '&#039;');
-// 				
-// 				// "Reply to Reply" Logic: Flatten to Level 2 with @Mention
-// 				let originalParentAuthorId = null; // Track who was *originally* replied to for notifications
-// 
-// 				if (parent_id) {
-// 					const parent = await env.cforum_db.prepare('SELECT parent_id, author_id FROM comments WHERE id = ?').bind(parent_id).first();
-// 					
-// 					if (parent) {
-// 						if (parent.parent_id !== null) {
-// 							// Level 3 attempt detected.
-// 							// 1. Fetch username of the user being replied to
-// 					const targetUser = await env.cforum_db.prepare('SELECT username FROM users WHERE id = ?').bind(parent.author_id).first<{username:string}>();
-// 					const targetName = targetUser ? targetUser.username : '';
-// 							// 2. Rewrite content and parent_id
-// 							content = `@${targetName} ${content}`;
-// 							parent_id = parent.parent_id; // Move up to share the same Level 1 parent
-// 							originalParentAuthorId = parent.author_id; // We still want to notify the specific user we @mentioned
-// 						} else {
-// 							// Normal Level 2 reply
-// 							originalParentAuthorId = parent.author_id;
-// 						}
-// 					}
-// 				}
-// 
-// 				const { success } = await env.cforum_db.prepare(
-// 					'INSERT INTO comments (post_id, author_id, content, parent_id) VALUES (?, ?, ?, ?)'
-// 				).bind(postId, userPayload.id, content, parent_id || null).run();
-// 				
-// 				await security.logAudit(userPayload.id, 'CREATE_COMMENT', 'comment', 'new', { postId, parent_id }, request);
-// 
-// 				// Email Notification Logic
-// 				if (success) {
-// 					// 1. Notify Post Author
-// 				const post = await env.cforum_db.prepare(
-// 					'SELECT posts.title, users.id as author_id, users.email, users.email_notifications, users.username FROM posts JOIN users ON posts.author_id = users.id WHERE posts.id = ?'
-// 				).bind(postId).first<PostAuthorInfo>();
-// 
-// 				// Fetch commenter name
-// 				const commenter = await env.cforum_db.prepare('SELECT username FROM users WHERE id = ?').bind(userPayload.id).first<{username:string}>();
-// 				const commenterName = commenter ? commenter.username : 'Unknown';
-// 					const postUrl = `${getBaseUrl()}/posts/${postId}`;
-// 
-// 					// Notify Post Author (if not self)
-// 					if (post && post.author_id !== userPayload.id && post.email_notifications === 1) {
-// 						const emailHtml = `
-// 							<h1>New Comment on your post</h1>
-// 							<p><strong>${commenterName}</strong> commented on your post "<strong>${post.title}</strong>":</p>
-// 							<blockquote>${content}</blockquote>
-// 							<p><a href="${postUrl}">View Comment</a></p>
-// 							<p style="font-size:0.8em;color:#666;">You received this email because you are subscribed to notifications.</p>
-// 						`;
-// 						ctx.waitUntil(sendEmail(post.email, `New comment on: ${post.title}`, emailHtml).catch(console.error));
-// 					}
-// 
-// 					// 2. Notify Parent Comment Author (if replying to a comment)
-// 					if (parent_id || originalParentAuthorId) {
-// 						// Determine who to notify:
-// 						// If originalParentAuthorId is set, it means we flattened a Level 3 reply and should notify that specific user.
-// 						// Otherwise, notify the direct parent (Level 1).
-// 						
-// 						const notifyUserId = originalParentAuthorId || (
-// 							parent_id ? (await env.cforum_db.prepare('SELECT author_id FROM comments WHERE id = ?').bind(parent_id).first())?.author_id : null
-// 						);
-// 
-// 						if (notifyUserId) {
-// 							const parentCommentUser = await env.cforum_db.prepare(
-// 								'SELECT email, email_notifications, username FROM users WHERE id = ?'
-// 				).bind(notifyUserId).first<{email:string;email_notifications:number;username:string}>();
-// 								// Avoid double notification if parent author is also post author (already handled above)
-// 								if (post && notifyUserId !== post.author_id) {
-// 									const replyHtml = `
-// 										<h1>New Reply to your comment</h1>
-// 										<p><strong>${commenterName}</strong> replied to your comment on "<strong>${post.title}</strong>":</p>
-// 										<blockquote>${content}</blockquote>
-// 										<p><a href="${postUrl}">View Reply</a></p>
-// 										<p style="font-size:0.8em;color:#666;">You received this email because you are subscribed to notifications.</p>
-// 									`;
-// 									ctx.waitUntil(sendEmail(parentCommentUser.email, `New reply to your comment`, replyHtml).catch(console.error));
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 
-// 				return jsonResponse({ success }, 201);
-// 		}
 
 		// DELETE /api/comments/:id
 		if (url.pathname.match(/^\/api\/comments\/\d+$/) && method === 'DELETE') {
