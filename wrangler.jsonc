@@ -26,11 +26,6 @@
 	],
 	"workers_dev": true,
 	"env": {
-		"production": {
-			"vars": {
-			"WORKER_URL": "*******************"
-			}
-		},
 		"development": {
 			"vars": {
 				"WORKER_URL": "http://localhost:8787"
