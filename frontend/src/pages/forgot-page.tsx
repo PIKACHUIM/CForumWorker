@@ -58,7 +58,7 @@ export function ForgotPage() {
 				<div className="p-8">
 					<div className="text-center mb-8">
 						<div className="text-4xl mb-3 animate-bounce-gentle">💌</div>
-				<h1 className="font-display text-2xl font-bold bg-gradient-to-r from-[#e879a0] to-[#a855f7] bg-clip-text text-transparent">
+				<h1 className="font-display text-2xl font-bold bg-gradient-to-r from-[#f43f8e] to-[#a855f7] bg-clip-text text-transparent">
 					{t.forgotPasswordTitle}
 				</h1>
 				<p className="text-sm text-muted-foreground mt-1">{t.forgotSubtitle}</p>

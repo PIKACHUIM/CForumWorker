@@ -48,20 +48,61 @@ function extractImageUrls(content: string): string[] {
 	return urls;
 }
 
-// Utility to hash password
+// Utility to hash password using PBKDF2 (secure, with salt)
+// Format: pbkdf2:<iterations>:<salt_hex>:<hash_hex>
 async function hashPassword(password: string): Promise<string> {
-	const myText = new TextEncoder().encode(password);
-	const myDigest = await crypto.subtle.digest(
-		{
-			name: 'SHA-256',
-		},
-		myText
+	const salt = crypto.getRandomValues(new Uint8Array(16));
+	const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+	const iterations = 100000;
+
+	const keyMaterial = await crypto.subtle.importKey(
+		'raw',
+		new TextEncoder().encode(password),
+		{ name: 'PBKDF2' },
+		false,
+		['deriveBits']
 	);
-	const hashArray = Array.from(new Uint8Array(myDigest));
-	const hashHex = hashArray
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-	return hashHex;
+	const derivedBits = await crypto.subtle.deriveBits(
+		{ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+		keyMaterial,
+		256
+	);
+	const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+	return `pbkdf2:${iterations}:${saltHex}:${hashHex}`;
+}
+
+// Verify password against stored hash (supports both PBKDF2 and legacy SHA-256)
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+	// New PBKDF2 format: pbkdf2:<iterations>:<salt_hex>:<hash_hex>
+	if (stored.startsWith('pbkdf2:')) {
+		const parts = stored.split(':');
+		if (parts.length !== 4) return false;
+		const iterations = parseInt(parts[1], 10);
+		const saltHex = parts[2];
+		const expectedHash = parts[3];
+
+		const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+		const keyMaterial = await crypto.subtle.importKey(
+			'raw',
+			new TextEncoder().encode(password),
+			{ name: 'PBKDF2' },
+			false,
+			['deriveBits']
+		);
+		const derivedBits = await crypto.subtle.deriveBits(
+			{ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+			keyMaterial,
+			256
+		);
+		const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+		return hashHex === expectedHash;
+	}
+
+	// Legacy SHA-256 format (plain hex string, 64 chars)
+	const myText = new TextEncoder().encode(password);
+	const myDigest = await crypto.subtle.digest({ name: 'SHA-256' }, myText);
+	const hashHex = Array.from(new Uint8Array(myDigest)).map(b => b.toString(16).padStart(2, '0')).join('');
+	return hashHex === stored;
 }
 
 function generateToken(): string {
@@ -916,6 +957,47 @@ export default {
 			}
 		}
 
+		// POST /api/user/change-password
+		if (url.pathname === '/api/user/change-password' && method === 'POST') {
+			try {
+				const userPayload = await authenticate(request);
+				const body = await request.json() as any;
+				const { old_password, new_password, totp_code } = body;
+
+				if (!old_password || !new_password) return jsonResponse({ error: 'Missing parameters' }, 400);
+				if (new_password.length < 8 || new_password.length > 16) return jsonResponse({ error: 'Password must be 8-16 characters' }, 400);
+
+				const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE id = ?').bind(userPayload.id).first<DBUser>();
+				if (!user) return jsonResponse({ error: 'User not found' }, 404);
+
+				// 验证旧密码
+				const oldHash = await hashPassword(old_password);
+				if (oldHash !== user.password) return jsonResponse({ error: 'Current password is incorrect' }, 401);
+
+				// 若开启了 2FA，需要验证
+				if (user.totp_enabled) {
+					if (!totp_code) return jsonResponse({ error: 'TOTP_REQUIRED' }, 403);
+					if (!user.totp_secret) return jsonResponse({ error: 'TOTP not configured' }, 500);
+					const totp = new OTPAuth.TOTP({
+						algorithm: 'SHA1',
+						digits: 6,
+						period: 30,
+						secret: OTPAuth.Secret.fromBase32(String(user.totp_secret))
+					});
+					if (totp.validate({ token: totp_code, window: 1 }) === null) {
+						return jsonResponse({ error: 'Invalid TOTP code' }, 401);
+					}
+				}
+
+				const passwordHash = await hashPassword(new_password);
+				await env.cfwforum_db.prepare('UPDATE users SET password = ? WHERE id = ?').bind(passwordHash, user.id).run();
+
+				return jsonResponse({ success: true });
+			} catch (e) {
+				return handleError(e);
+			}
+		}
+
 		// POST /api/user/change-email
 		if (url.pathname === '/api/user/change-email' && method === 'POST') {
 			try {
@@ -1682,9 +1764,12 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 
 		// --- END ADMIN ROUTES ---
 
-		// TEST: Email Debug
+		// TEST: Email Debug (Admin Only)
 		if (url.pathname === '/api/test-email' && method === 'POST') {
 			try {
+				const userPayload = await authenticate(request);
+				if (userPayload.role !== 'admin') return jsonResponse({ error: 'Unauthorized' }, 403);
+
 				const body = await request.json() as any;
 				const { to } = body;
 				if (!to) return jsonResponse({ error: '缺少收件人地址' }, 400);
@@ -1810,11 +1895,11 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 			}
 		}
 
-		// GET /users
+		// GET /users（仅返回公开信息，不暴露邮箱）
 		if (url.pathname === '/api/users' && method === 'GET') {
 			try {
 				const { results } = await env.cfwforum_db.prepare(
-					'SELECT id, email, username, created_at FROM users'
+					'SELECT id, username, avatar_url, created_at FROM users'
 				).all();
 				return jsonResponse(results);
 			} catch (e) {

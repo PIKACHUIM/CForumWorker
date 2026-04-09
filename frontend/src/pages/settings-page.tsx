@@ -32,6 +32,14 @@ export function SettingsPage() {
 	const [deletePassword, setDeletePassword] = React.useState('');
 	const [deleteTotp, setDeleteTotp] = React.useState('');
 
+	const [currentPassword, setCurrentPassword] = React.useState('');
+	const [newPassword, setNewPassword] = React.useState('');
+	const [confirmNewPassword, setConfirmNewPassword] = React.useState('');
+	const [changePwdTotp, setChangePwdTotp] = React.useState('');
+	const [changePwdLoading, setChangePwdLoading] = React.useState(false);
+	const [changePwdError, setChangePwdError] = React.useState('');
+	const [changePwdSuccess, setChangePwdSuccess] = React.useState('');
+
 	React.useEffect(() => {
 		if (!user) {
 			window.location.href = '/login';
@@ -156,6 +164,36 @@ export function SettingsPage() {
 			setError(String(e?.message || e));
 		} finally {
 			setLoading(false);
+		}
+	}
+
+	async function changePassword() {
+		if (!user) return;
+		setChangePwdError('');
+		setChangePwdSuccess('');
+		if (!currentPassword || !newPassword || !confirmNewPassword) return setChangePwdError('请填写所有密码字段');
+		if (newPassword !== confirmNewPassword) return setChangePwdError(t.passwordMismatch);
+		if (newPassword.length < 8 || newPassword.length > 16) return setChangePwdError('新密码长度须为 8-16 位');
+		setChangePwdLoading(true);
+		try {
+			await apiFetch('/user/change-password', {
+				method: 'POST',
+				headers: getSecurityHeaders('POST'),
+				body: JSON.stringify({
+					old_password: currentPassword,
+					new_password: newPassword,
+					totp_code: changePwdTotp
+				})
+			});
+			setChangePwdSuccess(t.changePasswordSuccess);
+			setCurrentPassword('');
+			setNewPassword('');
+			setConfirmNewPassword('');
+			setChangePwdTotp('');
+		} catch (e: any) {
+			setChangePwdError(String(e?.message || e));
+		} finally {
+			setChangePwdLoading(false);
 		}
 	}
 
@@ -317,9 +355,70 @@ export function SettingsPage() {
 							</>
 						)}
 					</CardContent>
-				</Card>
+			</Card>
 
-				<Card className="border-destructive/40">
+			<Card>
+			<CardHeader>
+				<CardTitle>{t.changePassword}</CardTitle>
+			</CardHeader>
+				<CardContent className="space-y-4">
+					{changePwdError ? <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">{changePwdError}</div> : null}
+					{changePwdSuccess ? <div className="rounded-md border border-mint/50 bg-mint/10 p-3 text-sm text-green-700 dark:text-green-300">🎉 {changePwdSuccess}</div> : null}
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor="current-password">{t.currentPassword}</Label>
+							<Input
+								id="current-password"
+								type="password"
+								autoComplete="current-password"
+								value={currentPassword}
+								onChange={(e) => setCurrentPassword(e.target.value)}
+								placeholder="••••••••"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="new-password">{t.newPassword} <span className="text-muted-foreground text-xs">(8-16 位)</span></Label>
+							<Input
+								id="new-password"
+								type="password"
+								autoComplete="new-password"
+								value={newPassword}
+								onChange={(e) => setNewPassword(e.target.value)}
+								placeholder="••••••••"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="confirm-new-password">{t.confirmNewPassword}</Label>
+							<Input
+								id="confirm-new-password"
+								type="password"
+								autoComplete="new-password"
+								value={confirmNewPassword}
+								onChange={(e) => setConfirmNewPassword(e.target.value)}
+								placeholder="••••••••"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="changepwd-totp">{t.twoFACode} {t.twoFAOptional}</Label>
+							<Input
+								id="changepwd-totp"
+								type="text"
+								inputMode="numeric"
+								maxLength={6}
+								autoComplete="one-time-code"
+								value={changePwdTotp}
+								onChange={(e) => setChangePwdTotp(e.target.value)}
+								placeholder="选填"
+							/>
+						</div>
+					</div>
+					<Button onClick={changePassword} disabled={changePwdLoading}>
+						{changePwdLoading ? t.processing : t.changePassword}
+					</Button>
+				</CardContent>
+			</Card>
+
+			<Card className="border-destructive/40">
 				<CardHeader>
 					<CardTitle className="text-destructive">{t.dangerZone}</CardTitle>
 				</CardHeader>

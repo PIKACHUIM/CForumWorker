@@ -7,39 +7,39 @@
 
 @layer base {
 	:root {
-		/* ===== 二次元主题色彩系统 ===== */
-		--color-sakura: #FFB7C5;       /* 樱花粉 */
-		--color-lavender: #C9B8E8;     /* 薰衣草紫 */
-		--color-sky: #A8D8EA;          /* 天空蓝 */
-		--color-peach: #FFCBA4;        /* 蜜桃橙 */
-		--color-mint: #B5EAD7;         /* 薄荷绿 */
-		--color-gold: #FFD700;         /* 星星金 */
+		/* ===== 二次元主题色彩系统 v2 ===== */
+		--color-sakura: #f472b6;       /* 玫瑰粉（更鲜艳） */
+		--color-lavender: #a78bfa;     /* 紫罗兰（更饱和） */
+		--color-sky: #38bdf8;          /* 天蓝（更清透） */
+		--color-peach: #fb923c;        /* 橙红（更活泼） */
+		--color-mint: #34d399;         /* 翠绿（更清新） */
+		--color-gold: #fbbf24;         /* 琥珀金 */
 
 		/* ===== shadcn/ui 兼容变量（亮色模式） ===== */
-		--background: 350 100% 99%;    /* #FFF9FB 奶白 */
-		--foreground: 280 30% 20%;     /* 深紫灰 */
+		--background: 0 0% 99%;        /* 纯净白 */
+		--foreground: 224 20% 14%;     /* 深蓝黑 */
 
 		--card: 0 0% 100%;
-		--card-foreground: 280 30% 20%;
+		--card-foreground: 224 20% 14%;
 
-		--primary: 340 70% 60%;        /* 粉色主色 #e879a0 */
+		--primary: 330 85% 58%;        /* 玫瑰红 #f43f8e */
 		--primary-foreground: 0 0% 100%;
 
-		--secondary: 270 40% 88%;      /* 薰衣草紫 */
-		--secondary-foreground: 280 30% 25%;
+		--secondary: 262 60% 94%;      /* 淡紫 */
+		--secondary-foreground: 262 40% 30%;
 
-		--muted: 340 30% 96%;
-		--muted-foreground: 280 15% 55%;
+		--muted: 220 14% 96%;
+		--muted-foreground: 220 10% 50%;
 
-		--accent: 200 50% 88%;         /* 天空蓝 */
-		--accent-foreground: 200 50% 25%;
+		--accent: 262 55% 92%;         /* 紫罗兰淡 */
+		--accent-foreground: 262 50% 28%;
 
 		--destructive: 0 84.2% 60.2%;
 		--destructive-foreground: 0 0% 100%;
 
-		--border: 340 50% 88%;         /* 粉色边框 */
-		--input: 340 50% 88%;
-		--ring: 340 70% 60%;
+		--border: 220 13% 91%;         /* 中性灰边框 */
+		--input: 220 13% 91%;
+		--ring: 330 85% 58%;
 
 		/* ===== 动画时长 ===== */
 		--anim-fast: 0.15s;
@@ -48,30 +48,30 @@
 	}
 
 	.dark {
-		--background: 240 30% 12%;     /* #1A1B2E 深蓝紫 */
-		--foreground: 300 20% 92%;
+		--background: 224 25% 8%;      /* #0d0f18 深邃黑蓝 */
+		--foreground: 220 20% 92%;     /* 冷白 */
 
-		--card: 240 28% 16%;
-		--card-foreground: 300 20% 92%;
+		--card: 224 22% 12%;           /* #161926 深卡片 */
+		--card-foreground: 220 20% 92%;
 
-		--primary: 340 70% 65%;
+		--primary: 330 85% 62%;        /* 玫瑰红（暗色稍亮） */
 		--primary-foreground: 0 0% 100%;
 
-		--secondary: 270 25% 22%;
-		--secondary-foreground: 270 30% 85%;
+		--secondary: 262 30% 20%;      /* 深紫 */
+		--secondary-foreground: 262 40% 85%;
 
-		--muted: 240 25% 20%;
-		--muted-foreground: 270 15% 65%;
+		--muted: 224 20% 16%;          /* 深灰蓝 */
+		--muted-foreground: 220 12% 58%;
 
-		--accent: 200 40% 25%;
-		--accent-foreground: 200 50% 85%;
+		--accent: 262 35% 22%;         /* 深紫罗兰 */
+		--accent-foreground: 262 50% 88%;
 
-		--destructive: 0 62.8% 40%;
+		--destructive: 0 62.8% 45%;
 		--destructive-foreground: 0 0% 100%;
 
-		--border: 270 25% 28%;
-		--input: 270 25% 28%;
-		--ring: 340 70% 65%;
+		--border: 224 18% 20%;         /* 深色边框 */
+		--input: 224 18% 20%;
+		--ring: 330 85% 62%;
 	}
 
 	* {
@@ -86,14 +86,10 @@
 	body {
 		@apply bg-background text-foreground;
 		font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-		/* 点阵背景装饰 */
-		background-image: radial-gradient(circle, hsl(var(--border) / 0.5) 1px, transparent 1px);
-		background-size: 24px 24px;
-		background-attachment: fixed;
 		min-height: 100vh;
 	}
 
-	/* 页面顶部彩虹渐变装饰条 */
+	/* 页面顶部渐变装饰条 */
 	body::before {
 		content: '';
 		position: fixed;
@@ -102,12 +98,13 @@
 		right: 0;
 		height: 3px;
 		background: linear-gradient(90deg,
-			#FFB7C5 0%,
-			#C9B8E8 25%,
-			#A8D8EA 50%,
-			#B5EAD7 75%,
-			#FFB7C5 100%
+			#f43f8e 0%,
+			#a855f7 40%,
+			#38bdf8 70%,
+			#f43f8e 100%
 		);
+		background-size: 200% 100%;
+		animation: gradient-shift 6s linear infinite;
 		z-index: 9999;
 		pointer-events: none;
 	}
@@ -118,6 +115,11 @@
 }
 
 /* ===== 动画关键帧 ===== */
+@keyframes gradient-shift {
+	0% { background-position: 0% 0%; }
+	100% { background-position: 200% 0%; }
+}
+
 @keyframes heartbeat {
 	0%, 100% { transform: scale(1); }
 	14% { transform: scale(1.3); }
@@ -207,15 +209,17 @@
 
 /* ===== 毛玻璃效果 ===== */
 .glass {
-	background: rgba(255, 249, 251, 0.75);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	border: 1px solid rgba(255, 183, 197, 0.3);
+	background: rgba(255, 255, 255, 0.82);
+	backdrop-filter: blur(16px) saturate(1.6);
+	-webkit-backdrop-filter: blur(16px) saturate(1.6);
+	border: 1px solid rgba(244, 63, 142, 0.15);
 }
 
 .dark .glass {
-	background: rgba(26, 27, 46, 0.75);
-	border: 1px solid rgba(201, 184, 232, 0.2);
+	background: rgba(13, 15, 24, 0.85);
+	backdrop-filter: blur(16px) saturate(1.4);
+	-webkit-backdrop-filter: blur(16px) saturate(1.4);
+	border: 1px solid rgba(167, 139, 250, 0.18);
 }
 
 /* ===== 渐变边框卡片 ===== */
@@ -231,15 +235,15 @@
 	position: absolute;
 	inset: -1px;
 	border-radius: 17px;
-	background: linear-gradient(135deg, #FFB7C5, #C9B8E8, #A8D8EA);
+	background: linear-gradient(135deg, #f43f8e, #a855f7, #38bdf8);
 	z-index: -1;
-	opacity: 0.6;
+	opacity: 0.5;
 	transition: opacity var(--anim-normal) ease;
 }
 
 .card-anime:hover {
 	transform: translateY(-4px);
-	box-shadow: 0 12px 32px rgba(232, 121, 160, 0.2);
+	box-shadow: 0 12px 36px rgba(244, 63, 142, 0.22), 0 4px 12px rgba(168, 85, 247, 0.12);
 }
 
 .card-anime:hover::before {
@@ -251,7 +255,7 @@
 	position: relative;
 	border-radius: 50%;
 	padding: 2px;
-	background: linear-gradient(135deg, #FFB7C5, #C9B8E8, #A8D8EA);
+	background: linear-gradient(135deg, #f43f8e, #a855f7);
 	display: inline-flex;
 }
 
@@ -270,7 +274,7 @@
 
 /* ===== 渐变按钮 ===== */
 .btn-anime {
-	background: linear-gradient(135deg, #e879a0, #a855f7);
+	background: linear-gradient(135deg, #f43f8e, #a855f7);
 	color: white;
 	border: none;
 	border-radius: 20px;
@@ -279,8 +283,8 @@
 
 .btn-anime:hover {
 	transform: scale(1.05);
-	box-shadow: 0 6px 20px rgba(232, 121, 160, 0.4);
-	filter: brightness(1.05);
+	box-shadow: 0 6px 24px rgba(244, 63, 142, 0.45), 0 2px 8px rgba(168, 85, 247, 0.25);
+	filter: brightness(1.08);
 }
 
 .btn-anime:active {
@@ -289,8 +293,8 @@
 
 /* ===== 置顶标签 ===== */
 .badge-pinned {
-	background: linear-gradient(135deg, #FFD700, #FFB7C5);
-	color: #7c3f00;
+	background: linear-gradient(135deg, #fbbf24, #f43f8e);
+	color: #fff;
 	border-radius: 20px;
 	padding: 2px 10px;
 	font-size: 0.75rem;
@@ -298,6 +302,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
 /* ===== 评论气泡 ===== */
@@ -426,7 +431,7 @@
 	margin-bottom: 0.75em;
 	padding-bottom: 0.3em;
 	border-bottom: 2px solid;
-	border-image: linear-gradient(90deg, #FFB7C5, #C9B8E8) 1;
+	border-image: linear-gradient(90deg, #f43f8e, #a855f7) 1;
 }
 
 .prose h2 {
@@ -513,7 +518,7 @@
 	margin-top: 1em;
 	margin-bottom: 1em;
 	padding-left: 1em;
-	border-left: 4px solid var(--color-sakura);
+	border-left: 4px solid #f43f8e;
 	color: hsl(var(--muted-foreground));
 	font-style: italic;
 	background: hsl(var(--muted) / 0.3);
@@ -547,7 +552,7 @@
 	margin-bottom: 2em;
 	border: none;
 	height: 2px;
-	background: linear-gradient(90deg, transparent, #FFB7C5, #C9B8E8, transparent);
+	background: linear-gradient(90deg, transparent, #f43f8e, #a855f7, transparent);
 }
 
 .prose img {
@@ -556,7 +561,7 @@
 	margin-top: 1em;
 	margin-bottom: 1em;
 	border-radius: 12px;
-	box-shadow: 0 4px 16px rgba(201, 184, 232, 0.2);
+	box-shadow: 0 4px 16px rgba(168, 85, 247, 0.18);
 }
 
 .prose > :first-child {
@@ -569,8 +574,8 @@
 
 /* ===== Markdown 预览面板 ===== */
 .preview-panel {
-	border: 2px dashed var(--color-sakura);
-	background: rgba(255, 183, 197, 0.05);
+	border: 2px dashed #f472b6;
+	background: rgba(244, 63, 142, 0.04);
 	border-radius: 12px;
 	padding: 1rem;
 }

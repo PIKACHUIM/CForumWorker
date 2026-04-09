@@ -75,7 +75,7 @@ export function SiteHeader({
 						>
 							<span className="text-xl animate-bounce-gentle">🌸</span>
 							<div className="flex flex-col">
-								<span className="font-display text-lg font-bold bg-gradient-to-r from-[#e879a0] to-[#a855f7] bg-clip-text text-transparent group-hover:opacity-80 transition-opacity leading-tight whitespace-nowrap min-w-[4em]">
+			<span className="font-display text-lg font-bold bg-gradient-to-r from-[#f43f8e] to-[#a855f7] bg-clip-text text-transparent group-hover:opacity-80 transition-opacity leading-tight whitespace-nowrap min-w-[4em]">
 									{siteTitle}
 								</span>
 								{siteDesc ? (
@@ -152,7 +152,7 @@ export function SiteHeader({
 													referrerPolicy="no-referrer"
 												/>
 											) : (
-						<span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white">
+						<span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f43f8e] to-[#a855f7] text-white">
 							<UserIcon className="h-5 w-5" />
 												</span>
 											)}

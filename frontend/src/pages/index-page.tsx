@@ -20,6 +20,14 @@ export function IndexPage() {
 	const { t } = useI18n();
 	const token = getToken();
 	const user = React.useMemo(() => getUser(), [token]);
+
+	// 强制登录：未登录用户直接跳转到登录页
+	React.useEffect(() => {
+		if (!user) {
+			window.location.href = '/login';
+		}
+	}, [user]);
+
 	const [banner, setBanner] = React.useState<string>('');
 	const [categories, setCategories] = React.useState<Category[]>([]);
 	const [selectedCategory, setSelectedCategory] = React.useState<string>('');
@@ -789,7 +797,7 @@ export function IndexPage() {
 										<div className="p-4">
 											<div className="flex gap-4">
 												{/* 封面图占位 */}
-												<div className="h-20 w-28 shrink-0 rounded-md bg-gradient-to-br from-sakura/20 to-lavender/20" />
+<div className="h-20 w-28 shrink-0 rounded-md bg-gradient-to-br from-[#f43f8e]/15 to-[#a855f7]/15" />
 												<div className="flex-1 space-y-2.5 min-w-0">
 													{/* 标题行 */}
 													<div className="flex items-center gap-2">
@@ -826,7 +834,7 @@ export function IndexPage() {
 									<div key={i} className="break-inside-avoid mb-4 rounded-2xl border bg-card shadow-card overflow-hidden animate-pulse">
 										{/* 封面图占位（高度随机） */}
 										{i % 3 !== 2 ? (
-											<div className="w-full bg-gradient-to-br from-sakura/20 to-lavender/20" style={{ height: `${100 + (i * 37) % 80}px` }} />
+<div className="w-full bg-gradient-to-br from-[#f43f8e]/15 to-[#a855f7]/15" style={{ height: `${100 + (i * 37) % 80}px` }} />
 										) : null}
 										<div className="p-4 space-y-2.5">
 											<div className="h-4 rounded-full bg-gradient-to-r from-sakura/25 to-lavender/20" style={{ width: `${60 + (i * 17) % 30}%` }} />
@@ -975,7 +983,7 @@ export function IndexPage() {
 															referrerPolicy="no-referrer"
 														/>
 													) : (
-														<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[10px]">
+<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#f43f8e] to-[#a855f7] text-white text-[10px]">
 															<User className="h-3.5 w-3.5" />
 														</span>
 													)}
@@ -1100,7 +1108,7 @@ export function IndexPage() {
 													{p.author_avatar ? (
 														<img src={p.author_avatar} alt="" className="h-5 w-5 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
 													) : (
-														<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[9px]"><User className="h-3 w-3" /></span>
+<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-[#f43f8e] to-[#a855f7] text-white text-[9px]"><User className="h-3 w-3" /></span>
 													)}
 												</span>
 												<span className="text-foreground">{p.author_name}</span>

@@ -578,7 +578,7 @@ function UsersTab({ currentUserId }: { currentUserId?: number }) {
 									<span className="inline-flex items-center gap-2">
 										{u.avatar_url
 											? <img src={u.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-											: <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[10px]"><UserIcon className="h-3.5 w-3.5" /></span>
+: <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#f43f8e] to-[#a855f7] text-white text-[10px]"><UserIcon className="h-3.5 w-3.5" /></span>
 										}
 										<span className="font-medium">{u.username}</span>
 										{u.role === 'admin' && <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:text-indigo-300"><Shield className="h-3 w-3" /></span>}
@@ -771,7 +771,8 @@ function SystemSettingsTab() {
 		// 基础信息
 		site_title: '',
 		site_description: '',
-		site_primary_color: '#e879a0',
+site_primary_color: '#f43f8e',
+
 		site_favicon_url: '',
 		// 外观
 		site_bg_image: '',
@@ -813,7 +814,7 @@ function SystemSettingsTab() {
 					notify_on_manual_verify: !!data.notify_on_manual_verify,
 					site_title: data.site_title || '',
 					site_description: data.site_description || '',
-					site_primary_color: data.site_primary_color || '#e879a0',
+					site_primary_color: data.site_primary_color || '#f43f8e',
 					site_favicon_url: data.site_favicon_url || '',
 					site_bg_image: data.site_bg_image || '',
 					site_bg_opacity: data.site_bg_opacity || '1',
@@ -937,9 +938,9 @@ function SystemSettingsTab() {
 									onChange={e => set('site_primary_color', e.target.value)}
 									className="h-9 w-12 rounded-lg border border-border cursor-pointer p-0.5"
 								/>
-								<Input value={form.site_primary_color} onChange={e => set('site_primary_color', e.target.value)} className="flex-1 font-mono text-sm" placeholder="#e879a0" />
-							</div>
-							<p className="text-xs text-muted-foreground">默认 #e879a0（樱花粉）</p>
+						<Input value={form.site_primary_color} onChange={e => set('site_primary_color', e.target.value)} className="flex-1 font-mono text-sm" placeholder="#f43f8e" />
+						</div>
+						<p className="text-xs text-muted-foreground">默认 #f43f8e（玫瑰红）</p>
 						</div>
 						<div className="space-y-1.5">
 							<Label>网站图标</Label>
@@ -1203,11 +1204,11 @@ export function AdminPage() {
 			<div className="flex flex-col gap-6">
 				{/* 页头 */}
 				<div className="flex items-center gap-3">
-					<div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-sakura to-lavender flex items-center justify-center text-white shadow-anime">
+				<div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#f43f8e] to-[#a855f7] flex items-center justify-center text-white shadow-anime">
 						<Shield className="h-5 w-5" />
 					</div>
 					<div>
-						<h1 className="font-display text-2xl font-bold bg-gradient-to-r from-[#e879a0] to-[#a855f7] bg-clip-text text-transparent">管理后台</h1>
+						<h1 className="font-display text-2xl font-bold bg-gradient-to-r from-[#f43f8e] to-[#a855f7] bg-clip-text text-transparent">管理后台</h1>
 						<p className="text-xs text-muted-foreground">欢迎回来，{user?.username} ✨</p>
 					</div>
 				</div>

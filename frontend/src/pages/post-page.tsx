@@ -366,9 +366,9 @@ export function PostPage() {
 						</div>
 					)}
 						<Card>
-							<CardHeader className="rounded-t-2xl bg-gradient-to-r from-sakura/15 via-lavender/15 to-sky/15 border-b border-sakura/20">
+<CardHeader className="rounded-t-2xl bg-gradient-to-r from-[#f43f8e]/10 via-[#a855f7]/10 to-[#38bdf8]/10 border-b border-[#f43f8e]/15">
 								<CardTitle className="flex flex-col gap-2">
-									<span className="font-display text-2xl bg-gradient-to-r from-[#e879a0] to-[#a855f7] bg-clip-text text-transparent">{post.title}</span>
+									<span className="font-display text-2xl bg-gradient-to-r from-[#f43f8e] to-[#a855f7] bg-clip-text text-transparent">{post.title}</span>
 									<span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-normal text-muted-foreground">
 										<span className="inline-flex items-center gap-2">
 											{post.author_avatar ? (
@@ -599,7 +599,7 @@ export function PostPage() {
 																		referrerPolicy="no-referrer"
 																	/>
 																) : (
-																	<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[10px]">
+<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#f43f8e] to-[#a855f7] text-white text-[10px]">
 																		<User className="h-4 w-4" />
 																	</span>
 																)}
