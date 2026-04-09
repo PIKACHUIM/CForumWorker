@@ -144,8 +144,8 @@ export default {
 		const blockedRegionsSetting = await env.cfwforum_db.prepare("SELECT value FROM settings WHERE key = 'site_blocked_regions'").first<DBSetting>().catch(() => null);
 		if (blockedRegionsSetting && blockedRegionsSetting.value) {
 			const blockedRegions = blockedRegionsSetting.value.split(',').map((r: string) => r.trim().toUpperCase()).filter(Boolean);
-			const country = request.headers.get('CF-IPCountry') || '';
-			if (blockedRegions.includes(country.toUpperCase())) {
+			const country = (request.cf?.country as string | undefined) || '';
+			if (country && blockedRegions.includes(country.toUpperCase())) {
 				// 只对页面请求返回禁止访问，API 请求也拦截
 				return new Response(
 					`<!DOCTYPE html><html><head><meta charset="utf-8"><title>访问受限</title></head><body style="font-family:sans-serif;text-align:center;padding:80px;background:#fff9fb"><h1 style="color:#e879a0">🚫 访问受限</h1><p>很抱歉，您所在的地区无法访问本站。</p><p style="color:#999">Access from your region is not allowed.</p></body></html>`,

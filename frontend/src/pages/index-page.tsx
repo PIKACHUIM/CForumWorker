@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, EyeOff, Heart, MessageCircle, MoreVertical, Pin, RefreshCw, Search, Shield, Trash2, User, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, EyeOff, Heart, LayoutGrid, LayoutList, MessageCircle, MoreVertical, Pin, RefreshCw, Search, Shield, Trash2, User, X } from 'lucide-react';
 
 import { TurnstileWidget } from '@/components/turnstile';
 import { PageShell } from '@/components/page-shell';
@@ -279,6 +279,7 @@ export function IndexPage() {
 	const [adminMenuPostId, setAdminMenuPostId] = React.useState<number | null>(null);
 	const [adminActionPostId, setAdminActionPostId] = React.useState<number | null>(null);
 	const [sortOption, setSortOption] = React.useState('time_desc');
+	const [viewMode, setViewMode] = React.useState<'list' | 'waterfall'>('list');
 	const listTopRef = React.useRef<HTMLDivElement | null>(null);
 	const lastOffsetRef = React.useRef<number | null>(null);
 
@@ -594,10 +595,37 @@ export function IndexPage() {
 					</Button>
 				) : null}
 			</form>
-			<Button variant="outline" size="sm" onClick={() => fetchPosts(0)} disabled={loading} className="h-8 px-2">
+		<Button variant="outline" size="sm" onClick={() => fetchPosts(0)} disabled={loading} className="h-8 px-2">
 				<RefreshCw className="h-3.5 w-3.5" />
 				<span className="sr-only">{t.refresh}</span>
 			</Button>
+			<div className="flex items-center rounded-lg border border-border overflow-hidden">
+				<button
+					type="button"
+					className={`h-8 px-2.5 flex items-center gap-1 text-sm transition-colors ${
+						viewMode === 'list'
+							? 'bg-sakura/20 text-primary'
+							: 'hover:bg-muted text-muted-foreground'
+					}`}
+					onClick={() => setViewMode('list')}
+					title="列表视图"
+				>
+					<LayoutList className="h-3.5 w-3.5" />
+				</button>
+				<div className="w-px h-5 bg-border" />
+				<button
+					type="button"
+					className={`h-8 px-2.5 flex items-center gap-1 text-sm transition-colors ${
+						viewMode === 'waterfall'
+							? 'bg-sakura/20 text-primary'
+							: 'hover:bg-muted text-muted-foreground'
+					}`}
+					onClick={() => setViewMode('waterfall')}
+					title="瀑布流视图"
+				>
+					<LayoutGrid className="h-3.5 w-3.5" />
+				</button>
+			</div>
 		</div>
 	);
 
@@ -605,12 +633,6 @@ export function IndexPage() {
 		<PageShell toolbar={toolbar}>
 			<div className="space-y-6">
 				{banner ? <div className="rounded-xl border border-sakura/30 bg-sakura/5 p-3 text-sm">{banner}</div> : null}
-				<div>
-					<h1 className="font-display text-3xl font-bold bg-gradient-to-r from-[#e879a0] to-[#a855f7] bg-clip-text text-transparent flex items-center gap-2">
-						<span className="animate-bounce-gentle">🌸</span> {config?.site_title || 'CForum'}
-					</h1>
-					<p className="text-sm text-muted-foreground mt-1">{config?.site_description || '由 Cloudflare Workers、Pages、D1、R2 提供服务。'}</p>
-				</div>
 
 				{user ? (
 					<Card>
@@ -778,38 +800,48 @@ export function IndexPage() {
 								<p className="text-sm text-muted-foreground">{t.noPosts}</p>
 							</CardContent>
 						</Card>
-					) : (
-						posts.map((p) => {
-							const coverUrl = getCoverImageUrl(p.content || '');
-							const isAdmin = user?.role === 'admin';
-							const menuOpen = adminMenuPostId === p.id;
-							const actionLoading = adminActionPostId === p.id;
-							return (
-								<Card key={p.id}>
-									<CardContent className="py-5">
-										<div className="flex gap-4">
-											{coverUrl ? (
-												<img
-													src={coverUrl}
-													alt=""
-													className="h-20 w-28 shrink-0 rounded-md object-cover"
-													loading="lazy"
-													referrerPolicy="no-referrer"
-												/>
-											) : null}
-											<div className="min-w-0 flex-1 space-y-1">
-												<div className="flex items-start justify-between gap-2">
-													<div className="flex min-w-0 items-center gap-2">
+				} : viewMode === 'list' ? (
+					<div className="space-y-3">
+					{posts.map((p) => {
+						const coverUrl = getCoverImageUrl(p.content || '');
+						const isAdmin = user?.role === 'admin';
+						const menuOpen = adminMenuPostId === p.id;
+						const actionLoading = adminActionPostId === p.id;
+						// 提取纯文本摘要（去除 markdown 标记）
+						const plainText = (p.content || '')
+							.replace(/!\[.*?\]\(.*?\)/g, '')
+							.replace(/\[([^\]]+)\]\(.*?\)/g, '$1')
+							.replace(/#{1,6}\s+/g, '')
+							.replace(/[*_`~>]/g, '')
+							.replace(/\n+/g, ' ')
+							.trim();
+						const excerpt = plainText.length > 120 ? plainText.slice(0, 120) + '…' : plainText;
+						return (
+							<Card key={p.id}>
+								<CardContent className="py-4">
+									<div className="flex gap-4">
+										{coverUrl ? (
+											<img
+												src={coverUrl}
+												alt=""
+												className="h-20 w-28 shrink-0 rounded-md object-cover"
+												loading="lazy"
+												referrerPolicy="no-referrer"
+											/>
+										) : null}
+										<div className="min-w-0 flex-1 space-y-1">
+											<div className="flex items-start justify-between gap-2">
+												<div className="flex min-w-0 items-center gap-2">
 											{p.is_pinned ? (
 												<span className="badge-pinned">
 													<span>👑</span>
 													{t.pinned}
 												</span>
-														) : null}
+													) : null}
 <a className="truncate text-lg font-semibold hover:underline" href={`/post?id=${p.id}`}>
-															{p.title}
-														</a>
-													</div>
+													{p.title}
+												</a>
+												</div>
 													{isAdmin ? (
 														<div className="relative">
 															<Button
@@ -915,27 +947,129 @@ export function IndexPage() {
 													<span>·</span>
 													<span className="whitespace-nowrap">{formatDate(p.created_at)}</span>
 												</div>
-												<div className="flex items-center gap-4 text-xs text-muted-foreground">
-													<span className="inline-flex items-center gap-1 hover:text-rose-500 transition-colors">
-														<span className="animate-heartbeat text-sm">💖</span>
-														{p.like_count || 0}
-													</span>
-													<span className="inline-flex items-center gap-1 hover:text-sky-500 transition-colors">
-														<span className="text-sm">💬</span>
-														{p.comment_count || 0}
-													</span>
-													<span className="inline-flex items-center gap-1 hover:text-emerald-500 transition-colors">
-														<span className="text-sm">👁️</span>
-														{p.view_count || 0}
-													</span>
-												</div>
+											{excerpt ? (
+												<p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{excerpt}</p>
+											) : null}
+											<div className="flex items-center gap-4 text-xs text-muted-foreground">
+												<span className="inline-flex items-center gap-1 hover:text-rose-500 transition-colors">
+													<span className="animate-heartbeat text-sm">💖</span>
+													{p.like_count || 0}
+												</span>
+												<span className="inline-flex items-center gap-1 hover:text-sky-500 transition-colors">
+													<span className="text-sm">💬</span>
+													{p.comment_count || 0}
+												</span>
+												<span className="inline-flex items-center gap-1 hover:text-emerald-500 transition-colors">
+													<span className="text-sm">👁️</span>
+													{p.view_count || 0}
+												</span>
 											</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})}
+					</div>
+				) : (
+					// 瀑布流视图
+					<div className="columns-1 sm:columns-2 gap-4 space-y-0">
+					{posts.map((p) => {
+						const coverUrl = getCoverImageUrl(p.content || '');
+						const isAdmin = user?.role === 'admin';
+						const menuOpen = adminMenuPostId === p.id;
+						const actionLoading = adminActionPostId === p.id;
+						const plainText = (p.content || '')
+							.replace(/!\[.*?\]\(.*?\)/g, '')
+							.replace(/\[([^\]]+)\]\(.*?\)/g, '$1')
+							.replace(/#{1,6}\s+/g, '')
+							.replace(/[*_`~>]/g, '')
+							.replace(/\n+/g, ' ')
+							.trim();
+						const excerpt = plainText.length > 200 ? plainText.slice(0, 200) + '…' : plainText;
+						return (
+							<div key={p.id} className="break-inside-avoid mb-4">
+								<Card className="overflow-hidden">
+									{coverUrl ? (
+										<img
+											src={coverUrl}
+											alt=""
+											className="w-full object-cover max-h-56"
+											loading="lazy"
+											referrerPolicy="no-referrer"
+										/>
+									) : null}
+									<CardContent className="py-4 space-y-2">
+										<div className="flex items-start justify-between gap-2">
+											<div className="flex min-w-0 items-center gap-1.5 flex-wrap">
+												{p.is_pinned ? (
+													<span className="badge-pinned"><span>👑</span>{t.pinned}</span>
+												) : null}
+												<a className="text-base font-semibold hover:underline leading-snug" href={`/post?id=${p.id}`}>
+													{p.title}
+												</a>
+											</div>
+											{isAdmin ? (
+												<div className="relative shrink-0">
+													<Button
+														type="button" variant="ghost" size="sm"
+														disabled={actionLoading}
+														onMouseDown={(e) => e.stopPropagation()}
+														onTouchStart={(e) => e.stopPropagation()}
+														onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAdminMenuPostId((cur) => (cur === p.id ? null : p.id)); }}
+													>
+														<MoreVertical className="h-4 w-4" />
+													</Button>
+													{menuOpen ? (
+														<div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border-2 border-sakura/20 bg-background/95 p-1 shadow-anime backdrop-blur-sm"
+															onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
+														>
+															<button type="button" disabled={actionLoading} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50" onClick={() => void adminTogglePin(p)}>
+																<Pin className="h-4 w-4" />{p.is_pinned ? t.unpinPost : t.togglePin}
+															</button>
+															<button type="button" disabled={actionLoading} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50" onClick={() => void adminDeletePost(p)}>
+																<Trash2 className="h-4 w-4" />{t.deletePost}
+															</button>
+															<div className="my-1 h-px bg-border" />
+															<div className="px-2 py-1 text-xs font-medium text-muted-foreground">{t.moveToCategory}</div>
+															<button type="button" disabled={actionLoading} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50" onClick={() => void adminMovePost(p, null)}>{t.uncategorized}</button>
+															{categories.map((c) => (
+																<button key={c.id} type="button" disabled={actionLoading} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50" onClick={() => void adminMovePost(p, c.id)}>{c.name}</button>
+															))}
+														</div>
+													) : null}
+												</div>
+											) : null}
+										</div>
+										{excerpt ? (
+											<p className="text-sm text-muted-foreground leading-relaxed">{excerpt}</p>
+										) : null}
+										<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+											<span className="inline-flex items-center gap-1.5">
+												<span className="avatar-anime">
+													{p.author_avatar ? (
+														<img src={p.author_avatar} alt="" className="h-5 w-5 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+													) : (
+														<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[9px]"><User className="h-3 w-3" /></span>
+													)}
+												</span>
+												<span className="text-foreground">{p.author_name}</span>
+											</span>
+											<span>·</span>
+											<span>{formatDate(p.created_at)}</span>
+										</div>
+										<div className="flex items-center gap-3 text-xs text-muted-foreground">
+											<span className="inline-flex items-center gap-1 hover:text-rose-500 transition-colors"><span className="animate-heartbeat">💖</span>{p.like_count || 0}</span>
+											<span className="inline-flex items-center gap-1 hover:text-sky-500 transition-colors"><span>💬</span>{p.comment_count || 0}</span>
+											<span className="inline-flex items-center gap-1 hover:text-emerald-500 transition-colors"><span>👁️</span>{p.view_count || 0}</span>
 										</div>
 									</CardContent>
 								</Card>
-							);
-						})
-					)}
+							</div>
+						);
+					})}
+					</div>
+				)}
 				</div>
 
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

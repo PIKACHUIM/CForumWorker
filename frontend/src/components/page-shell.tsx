@@ -4,6 +4,29 @@ import { SiteHeader } from '@/components/site-header';
 import { getUser, type User } from '@/lib/auth';
 import { useConfig } from '@/hooks/use-config';
 import { useI18n } from '@/hooks/use-i18n';
+import { Button } from '@/components/ui/button';
+
+// 协议弹窗组件
+function PolicyModal({ title, content, onClose }: { title: string; content: string; onClose: () => void }) {
+	const { t } = useI18n();
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+			<div className="relative z-10 w-full max-w-lg max-h-[70vh] flex flex-col rounded-2xl border border-sakura/30 bg-background shadow-2xl">
+				<div className="flex items-center justify-between px-5 py-4 border-b border-sakura/20 bg-gradient-to-r from-sakura/10 to-lavender/10 rounded-t-2xl">
+					<h3 className="font-display font-bold text-base">{title}</h3>
+					<button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-lg leading-none">✕</button>
+				</div>
+				<div className="overflow-y-auto flex-1 p-5">
+					<pre className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed font-sans">{content}</pre>
+				</div>
+				<div className="px-5 py-3 border-t border-sakura/20">
+					<Button size="sm" className="w-full" onClick={onClose}>{t.iHaveRead}</Button>
+				</div>
+			</div>
+		</div>
+	);
+}
 
 // 公告横幅组件
 function AnnouncementBanner({ html }: { html: string }) {
@@ -44,6 +67,8 @@ export function PageShell({
 	const { config } = useConfig();
 	const { t } = useI18n();
 	const [generatedSecret, setGeneratedSecret] = React.useState<string>('');
+	const [showTerms, setShowTerms] = React.useState(false);
+	const [showPrivacy, setShowPrivacy] = React.useState(false);
 
 	// if jwt not configured, generate a base64-secret for display
 	React.useEffect(() => {
@@ -124,6 +149,20 @@ export function PageShell({
 
 	return (
 		<div className="min-h-dvh">
+			{showTerms && (
+				<PolicyModal
+					title={t.termsTitle}
+					content={config?.site_terms || ''}
+					onClose={() => setShowTerms(false)}
+				/>
+			)}
+			{showPrivacy && (
+				<PolicyModal
+					title={t.privacyTitle}
+					content={config?.site_privacy || ''}
+					onClose={() => setShowPrivacy(false)}
+				/>
+			)}
 			<SiteHeader currentUser={user} onLogout={() => setUser(null)} config={config} toolbar={toolbar} />
 
 			{/* 站点公告横幅 - 顶栏下方 */}
@@ -142,7 +181,7 @@ export function PageShell({
 			)}
 			<main className="mx-auto w-full max-w-5xl px-4 py-6" style={bgStyle}>{children}</main>
 
-			{/* 页脚 */}
+		{/* 页脚 */}
 			<footer className="mt-8 border-t border-sakura/20 py-6 text-center text-xs text-muted-foreground">
 				{config?.site_footer_html ? (
 					<div dangerouslySetInnerHTML={{ __html: config.site_footer_html }} />
@@ -159,6 +198,31 @@ export function PageShell({
 						>
 							{config.site_icp}
 						</a>
+					</div>
+				) : null}
+				{(config?.site_terms || config?.site_privacy) ? (
+					<div className="mt-2 flex items-center justify-center gap-3">
+						{config?.site_terms ? (
+							<button
+								type="button"
+								onClick={() => setShowTerms(true)}
+								className="hover:text-primary transition-colors hover:underline"
+							>
+								{t.termsTitle}
+							</button>
+						) : null}
+						{config?.site_terms && config?.site_privacy ? (
+							<span className="text-muted-foreground/40">·</span>
+						) : null}
+						{config?.site_privacy ? (
+							<button
+								type="button"
+								onClick={() => setShowPrivacy(true)}
+								className="hover:text-primary transition-colors hover:underline"
+							>
+								{t.privacyTitle}
+							</button>
+						) : null}
 					</div>
 				) : null}
 			</footer>
