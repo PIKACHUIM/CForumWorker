@@ -2,7 +2,8 @@ import * as React from 'react';
 import {
 	BarChart2, FileText, MessageSquare, RefreshCw,
 	Settings, Shield, Users, User as UserIcon, Search, X,
-	EyeOff, Lock, Trash2, CheckCircle, Ban, ChevronLeft, ChevronRight, Tag
+	EyeOff, Lock, Trash2, CheckCircle, Ban, ChevronLeft, ChevronRight, Tag,
+	AlertTriangle, Info, CheckCircle2, XCircle
 } from 'lucide-react';
 
 import { PageShell } from '@/components/page-shell';
@@ -13,6 +14,76 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiFetch, formatDate, getSecurityHeaders, type Category } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
+
+// ─── Toast 通知系统 ───────────────────────────────────────────
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+type Toast = { id: number; type: ToastType; message: string };
+
+const ToastContext = React.createContext<(type: ToastType, message: string) => void>(() => {});
+
+function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
+	if (toasts.length === 0) return null;
+	const icons: Record<ToastType, React.ReactNode> = {
+		success: <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />,
+		error:   <XCircle className="h-4 w-4 text-red-500 shrink-0" />,
+		warning: <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />,
+		info:    <Info className="h-4 w-4 text-sky-500 shrink-0" />,
+	};
+	const colors: Record<ToastType, string> = {
+		success: 'border-emerald-200 bg-emerald-50/95 dark:bg-emerald-900/30 dark:border-emerald-700/50',
+		error:   'border-red-200 bg-red-50/95 dark:bg-red-900/30 dark:border-red-700/50',
+		warning: 'border-amber-200 bg-amber-50/95 dark:bg-amber-900/30 dark:border-amber-700/50',
+		info:    'border-sky-200 bg-sky-50/95 dark:bg-sky-900/30 dark:border-sky-700/50',
+	};
+	return (
+		<div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+			{toasts.map(t => (
+				<div key={t.id} className={`pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-sm animate-in slide-in-from-right-5 fade-in duration-300 ${colors[t.type]}`}>
+					{icons[t.type]}
+					<span className="text-sm flex-1 leading-snug">{t.message}</span>
+					<button onClick={() => onRemove(t.id)} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+						<X className="h-3.5 w-3.5" />
+					</button>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function useToast() {
+	return React.useContext(ToastContext);
+}
+
+// ─── 确认对话框 ───────────────────────────────────────────────
+function ConfirmDialog({
+	open, title, description, confirmLabel = '确认', confirmVariant = 'destructive', onConfirm, onCancel
+}: {
+	open: boolean;
+	title: string;
+	description?: string;
+	confirmLabel?: string;
+	confirmVariant?: 'destructive' | 'default';
+	onConfirm: () => void;
+	onCancel: () => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={v => !v && onCancel()}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<AlertTriangle className="h-5 w-5 text-amber-500" />
+						{title}
+					</DialogTitle>
+					{description && <DialogDescription>{description}</DialogDescription>}
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" onClick={onCancel}>取消</Button>
+					<Button variant={confirmVariant} onClick={onConfirm}>{confirmLabel}</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
 // ─── 默认协议模板 ─────────────────────────────────────────────
 const DEFAULT_TERMS = `用户协议
@@ -91,6 +162,7 @@ function StatusBadge({ status }: { status?: string }) {
 
 // ─── 帖子管理 Tab ─────────────────────────────────────────────
 function PostsTab() {
+	const toast = useToast();
 	const [posts, setPosts] = React.useState<any[]>([]);
 	const [total, setTotal] = React.useState(0);
 	const [loading, setLoading] = React.useState(false);
@@ -98,6 +170,9 @@ function PostsTab() {
 	const [status, setStatus] = React.useState('');
 	const [offset, setOffset] = React.useState(0);
 	const limit = 15;
+	// 确认弹窗
+	const [confirmOpen, setConfirmOpen] = React.useState(false);
+	const [pendingAction, setPendingAction] = React.useState<{ id: number; action: string } | null>(null);
 
 	const load = React.useCallback(async (off = 0) => {
 		setLoading(true);
@@ -115,15 +190,24 @@ function PostsTab() {
 
 	React.useEffect(() => { load(0); }, [load]);
 
-	async function doAction(id: number, action: string) {
-		if (action === 'delete' && !confirm('确定删除该帖子？此操作不可撤销。')) return;
+	function doAction(id: number, action: string) {
+		if (action === 'delete') {
+			setPendingAction({ id, action });
+			setConfirmOpen(true);
+		} else {
+			execAction(id, action);
+		}
+	}
+
+	async function execAction(id: number, action: string) {
 		try {
 			await apiFetch(`/admin/posts/${id}/action`, {
 				method: 'POST', headers: getSecurityHeaders('POST'),
 				body: JSON.stringify({ action })
 			});
+			toast('success', '操作成功');
 			load(offset);
-		} catch (e: any) { alert(e?.message || '操作失败'); }
+		} catch (e: any) { toast('error', e?.message || '操作失败'); }
 	}
 
 	const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -194,12 +278,21 @@ function PostsTab() {
 					<Button size="sm" variant="outline" disabled={currentPage >= totalPages || loading} onClick={() => load(offset + limit)}><ChevronRight className="h-4 w-4" /></Button>
 				</div>
 			</div>
+			<ConfirmDialog
+				open={confirmOpen}
+				title="删除帖子"
+				description="确定删除该帖子？此操作不可撤销。"
+				confirmLabel="删除"
+				onConfirm={() => { setConfirmOpen(false); if (pendingAction) execAction(pendingAction.id, pendingAction.action); }}
+				onCancel={() => setConfirmOpen(false)}
+			/>
 		</div>
 	);
 }
 
 // ─── 评论管理 Tab ─────────────────────────────────────────────
 function CommentsTab() {
+	const toast = useToast();
 	const [comments, setComments] = React.useState<any[]>([]);
 	const [total, setTotal] = React.useState(0);
 	const [loading, setLoading] = React.useState(false);
@@ -207,6 +300,8 @@ function CommentsTab() {
 	const [status, setStatus] = React.useState('');
 	const [offset, setOffset] = React.useState(0);
 	const limit = 15;
+	const [confirmOpen, setConfirmOpen] = React.useState(false);
+	const [pendingAction, setPendingAction] = React.useState<{ id: number; action: string } | null>(null);
 
 	const load = React.useCallback(async (off = 0) => {
 		setLoading(true);
@@ -224,15 +319,24 @@ function CommentsTab() {
 
 	React.useEffect(() => { load(0); }, [load]);
 
-	async function doAction(id: number, action: string) {
-		if (action === 'delete' && !confirm('确定删除该评论？')) return;
+	function doAction(id: number, action: string) {
+		if (action === 'delete') {
+			setPendingAction({ id, action });
+			setConfirmOpen(true);
+		} else {
+			execAction(id, action);
+		}
+	}
+
+	async function execAction(id: number, action: string) {
 		try {
 			await apiFetch(`/admin/comments/${id}/action`, {
 				method: 'POST', headers: getSecurityHeaders('POST'),
 				body: JSON.stringify({ action })
 			});
+			toast('success', '操作成功');
 			load(offset);
-		} catch (e: any) { alert(e?.message || '操作失败'); }
+		} catch (e: any) { toast('error', e?.message || '操作失败'); }
 	}
 
 	const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -305,12 +409,21 @@ function CommentsTab() {
 					<Button size="sm" variant="outline" disabled={currentPage >= totalPages || loading} onClick={() => load(offset + limit)}><ChevronRight className="h-4 w-4" /></Button>
 				</div>
 			</div>
+			<ConfirmDialog
+				open={confirmOpen}
+				title="删除评论"
+				description="确定删除该评论？此操作不可撤销。"
+				confirmLabel="删除"
+				onConfirm={() => { setConfirmOpen(false); if (pendingAction) execAction(pendingAction.id, pendingAction.action); }}
+				onCancel={() => setConfirmOpen(false)}
+			/>
 		</div>
 	);
 }
 
 // ─── 用户管理 Tab ─────────────────────────────────────────────
 function UsersTab({ currentUserId }: { currentUserId?: number }) {
+	const toast = useToast();
 	const [users, setUsers] = React.useState<any[]>([]);
 	const [total, setTotal] = React.useState(0);
 	const [loading, setLoading] = React.useState(false);
@@ -327,6 +440,9 @@ function UsersTab({ currentUserId }: { currentUserId?: number }) {
 	const [editAvatarUrl, setEditAvatarUrl] = React.useState('');
 	const [editPassword, setEditPassword] = React.useState('');
 	const [editLoading, setEditLoading] = React.useState(false);
+	// 确认弹窗
+	const [confirmOpen, setConfirmOpen] = React.useState(false);
+	const [confirmConfig, setConfirmConfig] = React.useState<{ title: string; desc: string; onOk: () => void } | null>(null);
 
 	const load = React.useCallback(async (off = 0) => {
 		setLoading(true);
@@ -344,32 +460,53 @@ function UsersTab({ currentUserId }: { currentUserId?: number }) {
 
 	React.useEffect(() => { load(0); }, [load]);
 
-	async function doAction(id: number, action: string) {
+	function doAction(id: number, action: string) {
 		const labels: Record<string, string> = { ban: '封禁', unban: '解封', hide: '隐藏所有内容' };
-		if (!confirm(`确定要${labels[action] || action}该用户？`)) return;
-		try {
-			await apiFetch(`/admin/users/${id}/action`, {
-				method: 'POST', headers: getSecurityHeaders('POST'),
-				body: JSON.stringify({ action })
-			});
-			load(offset);
-		} catch (e: any) { alert(e?.message || '操作失败'); }
+		setConfirmConfig({
+			title: `${labels[action] || action}用户`,
+			desc: `确定要${labels[action] || action}该用户？`,
+			onOk: async () => {
+				try {
+					await apiFetch(`/admin/users/${id}/action`, {
+						method: 'POST', headers: getSecurityHeaders('POST'),
+						body: JSON.stringify({ action })
+					});
+					toast('success', '操作成功');
+					load(offset);
+				} catch (e: any) { toast('error', e?.message || '操作失败'); }
+			}
+		});
+		setConfirmOpen(true);
 	}
 
-	async function deleteUser(id: number) {
-		if (!confirm('确定删除该用户？此操作不可撤销。')) return;
-		try {
-			await apiFetch(`/admin/users/${id}`, { method: 'DELETE', headers: getSecurityHeaders('DELETE') });
-			load(offset);
-		} catch (e: any) { alert(e?.message || '操作失败'); }
+	function deleteUser(id: number) {
+		setConfirmConfig({
+			title: '删除用户',
+			desc: '确定删除该用户？此操作不可撤销。',
+			onOk: async () => {
+				try {
+					await apiFetch(`/admin/users/${id}`, { method: 'DELETE', headers: getSecurityHeaders('DELETE') });
+					toast('success', '用户已删除');
+					load(offset);
+				} catch (e: any) { toast('error', e?.message || '操作失败'); }
+			}
+		});
+		setConfirmOpen(true);
 	}
 
-	async function manualVerify(id: number) {
-		if (!confirm('确认手动验证此用户？')) return;
-		try {
-			await apiFetch(`/admin/users/${id}/verify`, { method: 'POST', headers: getSecurityHeaders('POST'), body: JSON.stringify({}) });
-			load(offset);
-		} catch (e: any) { alert(e?.message || '操作失败'); }
+	function manualVerify(id: number) {
+		setConfirmConfig({
+			title: '手动验证用户',
+			desc: '确认手动验证此用户邮箱？',
+			onOk: async () => {
+				try {
+					await apiFetch(`/admin/users/${id}/verify`, { method: 'POST', headers: getSecurityHeaders('POST'), body: JSON.stringify({}) });
+					toast('success', '用户已验证');
+					load(offset);
+				} catch (e: any) { toast('error', e?.message || '操作失败'); }
+			}
+		});
+		setConfirmOpen(true);
 	}
 
 	function openEdit(u: any) {
@@ -394,9 +531,10 @@ function UsersTab({ currentUserId }: { currentUserId?: number }) {
 					password: editPassword || undefined
 				})
 			});
+			toast('success', '用户信息已保存');
 			setEditOpen(false);
 			load(offset);
-		} catch (e: any) { alert(e?.message || '保存失败'); }
+		} catch (e: any) { toast('error', e?.message || '保存失败'); }
 		setEditLoading(false);
 	}
 
@@ -500,6 +638,15 @@ function UsersTab({ currentUserId }: { currentUserId?: number }) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			{/* 确认弹窗 */}
+			<ConfirmDialog
+				open={confirmOpen}
+				title={confirmConfig?.title || ''}
+				description={confirmConfig?.desc}
+				confirmLabel="确认"
+				onConfirm={() => { setConfirmOpen(false); confirmConfig?.onOk(); }}
+				onCancel={() => setConfirmOpen(false)}
+			/>
 		</div>
 	);
 }
@@ -518,24 +665,32 @@ function CategoriesTab() {
 
 	React.useEffect(() => { load(); }, [load]);
 
+	const toast = useToast();
+	const [confirmOpen, setConfirmOpen] = React.useState(false);
+	const [pendingDelId, setPendingDelId] = React.useState<number | null>(null);
+
 	async function create() {
 		if (!newName.trim()) return;
 		setLoading(true);
-		try { await apiFetch('/admin/categories', { method: 'POST', headers: getSecurityHeaders('POST'), body: JSON.stringify({ name: newName }) }); setNewName(''); await load(); } catch (e: any) { alert(e?.message); }
+		try { await apiFetch('/admin/categories', { method: 'POST', headers: getSecurityHeaders('POST'), body: JSON.stringify({ name: newName }) }); setNewName(''); await load(); toast('success', '分类已创建'); } catch (e: any) { toast('error', e?.message || '创建失败'); }
 		setLoading(false);
 	}
 
 	async function update(id: number) {
 		if (!editName.trim()) return;
 		setLoading(true);
-		try { await apiFetch(`/admin/categories/${id}`, { method: 'PUT', headers: getSecurityHeaders('PUT'), body: JSON.stringify({ name: editName }) }); setEditId(null); await load(); } catch (e: any) { alert(e?.message); }
+		try { await apiFetch(`/admin/categories/${id}`, { method: 'PUT', headers: getSecurityHeaders('PUT'), body: JSON.stringify({ name: editName }) }); setEditId(null); await load(); toast('success', '分类已更新'); } catch (e: any) { toast('error', e?.message || '更新失败'); }
 		setLoading(false);
 	}
 
-	async function del(id: number) {
-		if (!confirm('确定删除此分类？')) return;
+	function del(id: number) {
+		setPendingDelId(id);
+		setConfirmOpen(true);
+	}
+
+	async function execDel(id: number) {
 		setLoading(true);
-		try { await apiFetch(`/admin/categories/${id}`, { method: 'DELETE', headers: getSecurityHeaders('DELETE') }); await load(); } catch (e: any) { alert(e?.message); }
+		try { await apiFetch(`/admin/categories/${id}`, { method: 'DELETE', headers: getSecurityHeaders('DELETE') }); await load(); toast('success', '分类已删除'); } catch (e: any) { toast('error', e?.message || '删除失败'); }
 		setLoading(false);
 	}
 
@@ -565,8 +720,16 @@ function CategoriesTab() {
 						</div>
 					</div>
 				))}
-				{categories.length === 0 && <p className="text-sm text-muted-foreground">暂无分类</p>}
-			</div>
+			{categories.length === 0 && <p className="text-sm text-muted-foreground">暂无分类</p>}
+		</div>
+		<ConfirmDialog
+			open={confirmOpen}
+			title="删除分类"
+			description="确定删除此分类？删除后该分类下的帖子将变为未分类。"
+			confirmLabel="删除"
+			onConfirm={() => { setConfirmOpen(false); if (pendingDelId !== null) execDel(pendingDelId); }}
+			onCancel={() => setConfirmOpen(false)}
+		/>
 		</div>
 	);
 }
@@ -675,18 +838,27 @@ function SystemSettingsTab() {
 		setForm(prev => ({ ...prev, [key]: value }));
 	}
 
+	const toast = useToast();
+
 	async function uploadImage(file: File, type: 'favicon' | 'bg') {
-		if (file.size > 2 * 1024 * 1024) { alert('文件过大（最大 2MB）'); return; }
+		if (file.size > 2 * 1024 * 1024) { toast('warning', '文件过大（最大 2MB）'); return; }
 		type === 'favicon' ? setUploadingFavicon(true) : setUploadingBg(true);
 		try {
 			const fd = new FormData();
 			fd.append('file', file);
-			fd.append('type', 'post');
-			const res = await fetch('/api/upload', { method: 'POST', headers: getSecurityHeaders('POST', null), body: fd });
+			fd.append('type', 'avatar');
+			const token = getToken();
+			const headers: Record<string, string> = {};
+			if (token) headers['Authorization'] = `Bearer ${token}`;
+			headers['X-Timestamp'] = Math.floor(Date.now() / 1000).toString();
+			headers['X-Nonce'] = crypto.randomUUID();
+			const res = await fetch('/api/upload', { method: 'POST', headers, body: fd });
 			const data = await res.json() as any;
 			if (!res.ok) throw new Error(data?.error || '上传失败');
+			if (!data.url) throw new Error('上传成功但未返回图片地址');
 			type === 'favicon' ? set('site_favicon_url', data.url) : set('site_bg_image', data.url);
-		} catch (e: any) { alert(e?.message || '上传失败'); }
+			toast('success', type === 'favicon' ? '图标上传成功' : '背景图上传成功');
+		} catch (e: any) { toast('error', e?.message || '上传失败'); }
 		type === 'favicon' ? setUploadingFavicon(false) : setUploadingBg(false);
 	}
 
@@ -991,6 +1163,12 @@ export function AdminPage() {
 	const isAdmin = user?.role === 'admin';
 	const [tab, setTab] = React.useState<AdminTab>('overview');
 	const [stats, setStats] = React.useState<{ users: number; posts: number; comments: number } | null>(null);
+	const [toasts, setToasts] = React.useState<Toast[]>([]);
+	const addToast = React.useCallback((type: ToastType, message: string) => {
+		const id = Date.now();
+		setToasts(prev => [...prev, { id, type, message }]);
+		setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+	}, []);
 
 	React.useEffect(() => {
 		if (!token) { window.location.href = '/login'; return; }
@@ -1020,6 +1198,7 @@ export function AdminPage() {
 	];
 
 	return (
+		<ToastContext.Provider value={addToast}>
 		<PageShell>
 			<div className="flex flex-col gap-6">
 				{/* 页头 */}
@@ -1056,8 +1235,8 @@ export function AdminPage() {
 
 					{/* 内容区 */}
 					<div className="flex-1 min-w-0">
-						<Card>
-							<CardHeader className="rounded-t-2xl bg-gradient-to-r from-sakura/10 via-lavender/10 to-sky/10 border-b border-sakura/20 pb-3">
+				<Card className="shadow-lg border-sakura/20 overflow-hidden">
+					<CardHeader className="rounded-t-2xl bg-gradient-to-r from-sakura/10 via-lavender/10 to-sky/10 border-b border-sakura/20 pb-3">
 								<CardTitle className="flex items-center gap-2 text-base">
 									{navItems.find(n => n.id === tab)?.icon}
 									{navItems.find(n => n.id === tab)?.label}
@@ -1072,7 +1251,7 @@ export function AdminPage() {
 												{ label: '帖子总数', value: stats?.posts, icon: '📝', color: 'from-lavender/20 to-lavender/5' },
 												{ label: '评论总数', value: stats?.comments, icon: '💬', color: 'from-sky/20 to-sky/5' },
 											].map(s => (
-												<div key={s.label} className={`rounded-2xl bg-gradient-to-br ${s.color} border border-sakura/20 p-4`}>
+							<div key={s.label} className={`rounded-2xl bg-gradient-to-br ${s.color} border border-sakura/20 p-4 shadow-md hover:shadow-lg transition-shadow`}>
 													<div className="text-2xl mb-1">{s.icon}</div>
 													<div className="text-2xl font-bold font-display">{s.value ?? '—'}</div>
 													<div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
@@ -1093,5 +1272,7 @@ export function AdminPage() {
 				</div>
 			</div>
 		</PageShell>
+		<ToastContainer toasts={toasts} onRemove={id => setToasts(prev => prev.filter(t => t.id !== id))} />
+		</ToastContext.Provider>
 	);
 }

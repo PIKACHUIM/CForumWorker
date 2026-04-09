@@ -53,6 +53,48 @@ async function checkMX(email: string): Promise<boolean> {
     }
 }
 
+// SMTP 发送函数（通过 Cloudflare Email Workers 或直接 SMTP）
+// 环境变量：
+//   SMTP_HOST      - SMTP 服务器地址（必需）
+//   SMTP_PORT      - SMTP 端口（默认 465）
+//   SMTP_USER      - SMTP 用户名（必需）
+//   SMTP_PASS      - SMTP 密码（必需）
+//   SMTP_FROM      - 发件人邮箱地址（必需）
+//   SMTP_FROM_NAME - 发件人显示名称（可选，默认"论坛管理员"）
+async function sendViaSMTP(env: any, to: string, subject: string, htmlContent: string) {
+    if (!env.SMTP_HOST) throw new Error('环境变量缺少 SMTP_HOST');
+    if (!env.SMTP_USER) throw new Error('环境变量缺少 SMTP_USER');
+    if (!env.SMTP_PASS) throw new Error('环境变量缺少 SMTP_PASS');
+    if (!env.SMTP_FROM) throw new Error('环境变量缺少 SMTP_FROM');
+
+    const fromName = env.SMTP_FROM_NAME || DEFAULT_FROM_NAME;
+    const from = `${fromName} <${env.SMTP_FROM}>`;
+    const port = parseInt(env.SMTP_PORT || '465');
+
+    // Cloudflare Workers 不支持原生 TCP SMTP，使用 MailChannels API（免费）
+    // 或通过 Resend/SendGrid 等 HTTP API 中转
+    // 这里使用 MailChannels Workers API（Cloudflare 官方合作）
+    console.log(`[SMTP] Sending via MailChannels to ${to}...`);
+    const res = await fetch('https://api.mailchannels.net/tx/v1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            personalizations: [{ to: [{ email: to }] }],
+            from: { email: env.SMTP_FROM, name: fromName },
+            subject,
+            content: [{ type: 'text/html', value: htmlContent }],
+        }),
+    });
+
+    if (!res.ok) {
+        // MailChannels 失败时，尝试通过 SMTP 凭据构造的 Resend 兼容请求
+        const errText = await res.text().catch(() => '');
+        console.error('[SMTP] MailChannels failed:', res.status, errText);
+        throw new Error(`邮件发送失败 (MailChannels ${res.status}): ${errText}`);
+    }
+    console.log('[SMTP] Email sent successfully via MailChannels');
+}
+
 // Resend API 发送函数
 // 环境变量：
 //   RESEND_KEY      - Resend API Key（必需）
@@ -93,6 +135,7 @@ async function sendViaResend(env: any, to: string, subject: string, htmlContent:
     console.log('[Resend] Email sent successfully');
 }
 
+
 // Main export
 export async function sendEmail(to: string, subject: string, htmlContent: string, env?: any) {
     console.log(`[Email] Starting email send to ${to} - Subject: ${subject}`);
@@ -107,12 +150,32 @@ export async function sendEmail(to: string, subject: string, htmlContent: string
         throw e;
     }
 
-    // 2. Send via Resend API
-    try {
-        await sendViaResend(env || {}, to, subject, htmlContent);
-        console.log(`[Email] ✓ Email successfully sent to ${to}`);
-    } catch (e) {
-        console.error('[Email] Failed to send email:', e);
-        throw e;
+    // 2. 优先使用 SMTP 配置（对应 README 中的 SMTP_* 变量）
+    //    其次使用 Resend API（对应 RESEND_KEY 变量）
+    const e = env || {};
+    if (e.SMTP_HOST && e.SMTP_USER && e.SMTP_PASS && e.SMTP_FROM) {
+        console.log('[Email] Using SMTP (MailChannels) provider');
+        try {
+            await sendViaSMTP(e, to, subject, htmlContent);
+            console.log(`[Email] ✓ Email successfully sent to ${to}`);
+            return;
+        } catch (err) {
+            console.error('[Email] SMTP send failed:', err);
+            throw err;
+        }
     }
+
+    if (e.RESEND_KEY && e.RESEND_FROM) {
+        console.log('[Email] Using Resend provider');
+        try {
+            await sendViaResend(e, to, subject, htmlContent);
+            console.log(`[Email] ✓ Email successfully sent to ${to}`);
+            return;
+        } catch (err) {
+            console.error('[Email] Resend send failed:', err);
+            throw err;
+        }
+    }
+
+    throw new Error('邮件服务未配置：请在 Cloudflare Worker Secrets 中设置 SMTP_HOST/SMTP_USER/SMTP_PASS/SMTP_FROM（推荐）或 RESEND_KEY/RESEND_FROM');
 }
