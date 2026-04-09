@@ -131,26 +131,41 @@ jobs:
 
       - name: Ensure Cloudflare Pages project exists
         run: |
-          if npx wrangler pages project list | grep -q "cforum"; then
-            echo "✅ Pages project 'cforum' already exists"
+          if npx wrangler pages project list | grep -q "cfwforum-work"; then
+            echo "✅ Pages project 'cfwforum-work' already exists"
           else
-            echo "🆕 Creating Pages project 'cforum'"
-            npx wrangler pages project create cforum --production-branch main
+            echo "🆕 Creating Pages project 'cfwforum-work'"
+            npx wrangler pages project create cfwforum-work --production-branch main
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+      - name: Set WORKER_URL for Pages project
+        run: |
+          if [ -n "$WORKER_URL" ]; then
+            echo "🔗 Setting WORKER_URL for Pages project..."
+            npx wrangler pages secret put WORKER_URL --project-name=cfwforum-work <<< "$WORKER_URL"
+          else
+            echo "⚠️  WORKER_URL secret is not set! Pages Functions will fail to proxy API requests."
+            echo "   Please add WORKER_URL to GitHub Secrets (e.g. https://cfwforum-work.adysec.workers.dev)"
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy public --project-name=cforum
+          command: pages deploy public --project-name=cfwforum-work
 
       - name: Success
         run: |
           echo "✅ 部署完成！"
-          echo "📍 Pages: https://cforum.pages.dev (静态资源 - 免费无限)"
-          echo "📍 Worker: https://cforum.workers.dev (API - 按需计费)"
+          echo "📍 Pages: https://cfwforum-work.pages.dev (静态资源 - 免费无限)"
+          echo "📍 Worker: https://cfwforum-work.workers.dev (API - 按需计费)"
           echo "💡 使用 GitHub Secrets 配置自定义域名"

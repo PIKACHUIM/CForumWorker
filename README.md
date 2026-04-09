@@ -1,4 +1,4 @@
-# CForum
+# cfwforum-work
 
 一个基于 Cloudflare Workers + Pages + D1 + R2 的论坛，支持帖子、评论、图片上传、2FA 等。
 
@@ -38,13 +38,13 @@
 - ✅ **访问统计** - 浏览量统计（post view count）
 - ✅ **点赞系统** - 灵活的点赞/取消点赞
 - ✅ **验证码** - 集成 Cloudflare Turnstile
-- ✅ **邮件服务** - SMTP 配置、验证邮件、重置密码
+- ✅ **邮件服务** - Resend API 发送、验证邮件、重置密码
 
 ## 🚀 快速开始
 
 ### 方法 1：Fork + 一键部署（适合一次部署的普通用户）
 
-[![Deploy to Cloudflare](https://camo.githubusercontent.com/aa3de9a0130879a84691a2286f5302105d5f3554c5d0af4e3f2f24174eeeea25/68747470733a2f2f6465706c6f792e776f726b6572732e636c6f7564666c6172652e636f6d2f627574746f6e)](https://deploy.workers.cloudflare.com/?url=https://github.com/adysec/cforum)
+[![Deploy to Cloudflare](https://camo.githubusercontent.com/aa3de9a0130879a84691a2286f5302105d5f3554c5d0af4e3f2f24174eeeea25/68747470733a2f2f6465706c6f792e776f726b6572732e636c6f7564666c6172652e636f6d2f627574746f6e)](https://deploy.workers.cloudflare.com/?url=https://github.com/adysec/cfwforum-work)
 
 > 在 Cloudflare 仪表盘中为 Worker 添加一个至少 32 字符的 `JWT_SECRET` 密钥。
 > **前端提醒**：如果 Worker 运行时未检测到有效 `JWT_SECRET`，页面顶部将显示黄色通知并建议一个随机密钥，你可以复制并粘贴到 Secrets 中。
@@ -83,12 +83,9 @@
 | `CF_API_TOKEN` | Cloudflare API Token | [创建CF_API_TOKEN](https://dash.cloudflare.com/profile/api-tokens) | 必需 |
 | `CF_ACCOUNT_ID` | 你的 Cloudflare Account ID | [查看CF_ACCOUNT_ID](https://dash.cloudflare.com/caching/overview) | 必需 |
 | `JWT_SECRET` | 随机字符串 | `head -c 32 /dev/urandom \| base64` | 必需 |
-| `SMTP_HOST` | SMTP 服务器地址 | 邮件发送用，例如：smtp.exmail.qq.com | 非必需，未配置则无法注册 |
-| `SMTP_PORT` | SMTP 端口 | 例如：465 | 非必需，未配置则无法注册 |
-| `SMTP_USER` | SMTP 用户名 | 邮箱地址 | 非必需，未配置则无法注册 |
-| `SMTP_PASS` | SMTP 密码 | 应用专用密码（非主密码） | 非必需，未配置则无法注册 |
-| `SMTP_FROM` | 发送者邮箱 | 例如：noreply@example.com（未设置则使用 SMTP_USER） | 非必需，未配置则无法注册 |
-| `SMTP_FROM_NAME` | 发件人显示名称 | 例如：CForum（未设置则使用"论坛管理员"） | 非必需，未配置则无法注册 |
+| `RESEND_KEY` | Resend API Key | 在 [Resend 控制台](https://resend.com/api-keys) 创建 | 非必需，未配置则无法注册 |
+| `RESEND_FROM` | 发件人邮箱地址 | 例如：noreply@example.com（需在 Resend 中验证域名） | 非必需，未配置则无法注册 |
+| `RESEND_FROM_NAME` | 发件人显示名称 | 例如：CForum（未设置则使用"论坛管理员"） | 非必需，未配置则无法注册 |
 | `BASE_URL` | 站点 URL | 例如：`https://forum.adysec.com`（未设置则自动使用当前请求域名） | 非必需，未配置则邮件异常 |
 | `TURNSTILE_SITE_KEY` | Cloudflare Turnstile Site Key | [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) | 非必需，未配置则使用Turnstile |
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile Secret | [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) | 非必需，未配置则使用Turnstile |
@@ -107,7 +104,7 @@
 
 ### 单域名方案（推荐）
 
-CForum 采用 **Pages + Worker 混合架构，通过 Pages Functions 统一接入**：
+cfwforum-work 采用 **Pages + Worker 混合架构，通过 Pages Functions 统一接入**：
 
 ```
 用户访问：https://forum.adysec.com
@@ -126,7 +123,7 @@ Cloudflare Pages CDN (智能路由)
 ### 绑定步骤
 
 1. 进入 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Pages**
-2. 选择 **cforum** 项目 → **Settings** → **Custom domains**
+2. 选择 **cfwforum-work** 项目 → **Settings** → **Custom domains**
 3. 点击 **Add custom domain**，输入你的域名（如 `forum.adysec.com`）
 4. 完成验证 ✅
 

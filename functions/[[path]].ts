@@ -27,11 +27,17 @@ export const onRequest: PagesFunction = async (context) => {
 	try {
 		const isLocalDev = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
 		let workerUrl = (env.WORKER_URL as string) ||
-			(isLocalDev ? 'http://localhost:8787' : 'https://cforum.adysec.workers.dev');
+		(isLocalDev ? 'http://localhost:8787' : '');
 
-		if (!workerUrl.startsWith('http')) {
-			console.warn(`⚠️ Invalid WORKER_URL: ${workerUrl}`);
-			workerUrl = isLocalDev ? 'http://localhost:8787' : 'https://cforum.adysec.workers.dev';
+		if (!workerUrl || !workerUrl.startsWith('http')) {
+			if (!isLocalDev) {
+				console.error('❌ WORKER_URL environment variable is not set for production!');
+				return Response.json(
+					{ error: 'Server misconfiguration: WORKER_URL is not configured' },
+					{ status: 503, headers: corsHeaders }
+				);
+			}
+			workerUrl = 'http://localhost:8787';
 		}
 
 		console.log(`↔️ Proxying request to Worker: ${workerUrl}${pathname}`);
