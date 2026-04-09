@@ -102,15 +102,5 @@ CREATE TABLE audit_logs (
 
 INSERT INTO settings (key, value) VALUES ('turnstile_enabled', '0');
 
--- Insert some dummy data
--- Admin user (admin@adysec.com / Admin@123)
--- Hash for 'Admin@123': ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
-INSERT INTO users (email, username, password, role, verified, nickname) VALUES
-('admin@adysec.com', 'Admin', 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7', 'admin', 1, 'System Admin'),
-('alice@example.com', 'Alice', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'user', 1, 'Alice Wonderland'),
-('bob@example.com', 'Bob', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'user', 0, NULL);
-
+-- 初始分类数据
 INSERT INTO categories (name) VALUES ('General'), ('Tech'), ('Random');
-
-INSERT INTO posts (author_id, title, content, category_id) VALUES (1, 'Welcome to CForum', 'This is an official announcement from the admin.', 1);
-INSERT INTO posts (author_id, title, content, category_id) VALUES (2, 'Hello World', 'This is the first post by Alice!', 2);

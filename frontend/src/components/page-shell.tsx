@@ -1,10 +1,17 @@
 import * as React from 'react';
+import createDOMPurify from 'dompurify';
 
 import { SiteHeader } from '@/components/site-header';
 import { getUser, type User } from '@/lib/auth';
 import { useConfig } from '@/hooks/use-config';
 import { useI18n } from '@/hooks/use-i18n';
 import { Button } from '@/components/ui/button';
+
+// 安全净化 HTML，防止 XSS
+function sanitizeHtml(html: string): string {
+	const DOMPurify = createDOMPurify(window as unknown as Window);
+	return DOMPurify.sanitize(html, { FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'] });
+}
 
 // 协议弹窗组件
 function PolicyModal({ title, content, onClose }: { title: string; content: string; onClose: () => void }) {
@@ -38,10 +45,10 @@ function AnnouncementBanner({ html }: { html: string }) {
 			<div className="glass rounded-2xl border border-sakura/25 shadow-anime px-4 py-2.5 flex items-center justify-between gap-3 text-sm bg-gradient-to-r from-sakura/10 via-lavender/10 to-sky/10 backdrop-blur-md">
 				<div className="flex items-center gap-2 flex-1 min-w-0">
 					<span className="text-base shrink-0 animate-bounce-gentle">📢</span>
-					<span
-						className="text-foreground/80 truncate"
-						dangerouslySetInnerHTML={{ __html: html }}
-					/>
+				<span
+					className="text-foreground/80 truncate"
+					dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+				/>
 				</div>
 				<button
 					type="button"
@@ -184,7 +191,7 @@ export function PageShell({
 		{/* 页脚 */}
 			<footer className="mt-8 border-t border-sakura/20 py-6 text-center text-xs text-muted-foreground">
 				{config?.site_footer_html ? (
-					<div dangerouslySetInnerHTML={{ __html: config.site_footer_html }} />
+					<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(config.site_footer_html) }} />
 				) : (
 					<span>Powered by <span className="text-primary font-medium">CForum</span> ✨</span>
 				)}

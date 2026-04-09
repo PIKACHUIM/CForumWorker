@@ -1,4 +1,5 @@
 import * as React from 'react';
+import imageCompression from 'browser-image-compression';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, EyeOff, Heart, LayoutGrid, LayoutList, MessageCircle, MoreVertical, Pin, RefreshCw, Search, Shield, Trash2, User, X } from 'lucide-react';
 
 import { TurnstileWidget } from '@/components/turnstile';
@@ -741,15 +742,17 @@ export function IndexPage() {
 				const file = e.target.files && e.target.files[0];
 				if (!file) return;
 				setUploadError('');
-				// allow up to 2MB
-				if (file.size > 2 * 1024 * 1024) {
-					setUploadError(t.fileTooLarge);
-					return;
-				}
 				setUploadLoading(true);
 				try {
+					// 压缩图片，最大2MB，高压缩模式
+					const compressed = await imageCompression(file, {
+						maxSizeMB: 1,
+						maxWidthOrHeight: 1920,
+						useWebWorker: true,
+						initialQuality: 0.6,
+					});
 					const formData = new FormData();
-					formData.append('file', file);
+					formData.append('file', compressed, file.name);
 					formData.append('type', 'post');
 					const res = await fetch('/api/upload', {
 						method: 'POST',

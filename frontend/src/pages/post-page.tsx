@@ -1,4 +1,5 @@
 import * as React from 'react';
+import imageCompression from 'browser-image-compression';
 import { ArrowLeft, Eye, EyeOff, Heart, MoreVertical, Pin, Pencil, Reply, Shield, Trash2, User, X } from 'lucide-react';
 
 import { TurnstileWidget } from '@/components/turnstile';
@@ -510,14 +511,17 @@ export function PostPage() {
                                     const file = e.target.files && e.target.files[0];
                                     if (!file) return;
                                     setEditError('');
-                                    if (file.size > 2 * 1024 * 1024) {
-                                        setEditError(t.fileTooLarge);
-                                        return;
-                                    }
                                     setUploadLoading(true);
                                     try {
+                                        // 压缩图片，最大2MB，高压缩模式
+                                        const compressed = await imageCompression(file, {
+                                            maxSizeMB: 2,
+                                            maxWidthOrHeight: 1920,
+                                            useWebWorker: true,
+                                            initialQuality: 0.6,
+                                        });
                                         const formData = new FormData();
-                                        formData.append('file', file);
+                                        formData.append('file', compressed, file.name);
                                         formData.append('type', 'post');
                                         const res = await fetch('/api/upload', {
                                             method: 'POST',

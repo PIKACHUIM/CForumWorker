@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { useConfig } from '@/hooks/use-config';
 
 /**
  * 二次元风格认证页面背景容器
@@ -12,6 +13,29 @@ export function AuthPageShell({
 	children: React.ReactNode;
 	className?: string;
 }) {
+	const { config } = useConfig();
+
+	// 动态设置站点标题和图标（与 PageShell 保持一致）
+	React.useEffect(() => {
+		if (!config) return;
+		if (config.site_title) {
+			// 保留页面原有的子标题前缀（如"登录 - "）
+			const current = document.title;
+			const sep = current.indexOf(' - ');
+			const prefix = sep !== -1 ? current.slice(0, sep + 3) : '';
+			document.title = prefix + config.site_title;
+		}
+		if (config.site_favicon_url) {
+			let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+			if (!link) {
+				link = document.createElement('link');
+				link.rel = 'icon';
+				document.head.appendChild(link);
+			}
+			link.href = config.site_favicon_url;
+		}
+	}, [config]);
+
 	return (
 		<div className={cn(
 			'min-h-dvh relative overflow-hidden',

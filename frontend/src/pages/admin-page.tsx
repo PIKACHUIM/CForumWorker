@@ -1,4 +1,5 @@
 import * as React from 'react';
+import imageCompression from 'browser-image-compression';
 import {
 	BarChart2, FileText, MessageSquare, RefreshCw,
 	Settings, Shield, Users, User as UserIcon, Search, X,
@@ -378,7 +379,7 @@ function CommentsTab() {
 						) : comments.map(c => (
 							<tr key={c.id} className="border-t border-sakura/10 hover:bg-sakura/5 transition-colors">
 								<td className="px-3 py-2 max-w-[200px]">
-									<span className="truncate block text-muted-foreground" dangerouslySetInnerHTML={{ __html: (c.content || '').slice(0, 60) + ((c.content || '').length > 60 ? '…' : '') }} />
+									<span className="truncate block text-muted-foreground">{(c.content || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").slice(0, 60)}{(c.content || '').length > 60 ? '…' : ''}</span>
 								</td>
 								<td className="px-3 py-2 hidden md:table-cell text-muted-foreground">{c.author_name}</td>
 								<td className="px-3 py-2 hidden lg:table-cell">
@@ -842,11 +843,17 @@ site_primary_color: '#f43f8e',
 	const toast = useToast();
 
 	async function uploadImage(file: File, type: 'favicon' | 'bg') {
-		if (file.size > 2 * 1024 * 1024) { toast('warning', '文件过大（最大 2MB）'); return; }
 		type === 'favicon' ? setUploadingFavicon(true) : setUploadingBg(true);
 		try {
+			// 压缩图片，最大2MB，高压缩模式
+			const compressed = await imageCompression(file, {
+				maxSizeMB: 2,
+				maxWidthOrHeight: 1920,
+				useWebWorker: true,
+				initialQuality: 0.6,
+			});
 			const fd = new FormData();
-			fd.append('file', file);
+			fd.append('file', compressed, file.name);
 			fd.append('type', 'avatar');
 			const token = getToken();
 			const headers: Record<string, string> = {};

@@ -1,5 +1,5 @@
 import * as React from 'react';
-
+import imageCompression from 'browser-image-compression';
 import QRCode from 'qrcode';
 
 import { PageShell } from '@/components/page-shell';
@@ -79,22 +79,25 @@ export function SettingsPage() {
 	async function uploadAvatar(file: File) {
 		if (!user) return;
 		setError('');
-		// allow larger avatar images (2MB)
-		if (file.size > 2 * 1024 * 1024) return setError(t.fileTooLarge);
-
-		const formData = new FormData();
-		formData.append('file', file);
-		formData.append('type', 'avatar');
-
 		setLoading(true);
 		try {
+			// 压缩图片，最大2MB，高压缩模式
+			const compressed = await imageCompression(file, {
+				maxSizeMB: 2,
+				maxWidthOrHeight: 1920,
+				useWebWorker: true,
+				initialQuality: 0.6,
+			});
+			const formData = new FormData();
+			formData.append('file', compressed, file.name);
+			formData.append('type', 'avatar');
 			const res = await fetch('/api/upload', {
 				method: 'POST',
 				headers: getSecurityHeaders('POST', null),
 				body: formData
 			});
-		const data = (await res.json()) as any;
-				if (!res.ok) throw new Error(data?.error || t.uploadFailed);
+			const data = (await res.json()) as any;
+					if (!res.ok) throw new Error(data?.error || t.uploadFailed);
 			setAvatarUrl(data.url);
 		} catch (e: any) {
 			setError(String(e?.message || e));

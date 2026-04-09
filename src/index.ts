@@ -36,6 +36,17 @@ interface DBUserTotp { totp_secret: string; }
 interface DBCount { count: number; }
 interface DBSetting { value: string; }
 
+// Utility to escape HTML special characters (防止邮件模板 XSS)
+function escapeHtml(str: string): string {
+	if (!str) return '';
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#039;');
+}
+
 // Utility to extract image URLs from Markdown content
 function extractImageUrls(content: string): string[] {
 	if (!content) return [];
@@ -168,10 +179,21 @@ export default {
 		};
 
 		// CORS headers helper
+		// 优先使用 CORS_ORIGIN 环境变量，其次使用 BASE_URL，最后才 fallback 到 *
+		const allowedOrigin = (() => {
+			const corsOriginEnv = (env as any).CORS_ORIGIN as string | undefined;
+			if (corsOriginEnv) return corsOriginEnv;
+			if (env.BASE_URL) return env.BASE_URL.replace(/\/$/, '');
+			// 检查请求来源是否与站点同源
+			const origin = request.headers.get('Origin');
+			if (origin) return origin; // 同源请求直接反射（仅在无配置时）
+			return '*';
+		})();
 		const corsHeaders = {
-			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Origin': allowedOrigin,
 			'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS, DELETE, PUT',
 			'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Timestamp, X-Nonce',
+			...(allowedOrigin !== '*' ? { 'Vary': 'Origin' } : {}),
 		};
 
 		// Handle OPTIONS (CORS preflight)
@@ -617,8 +639,7 @@ export default {
 					return jsonResponse({ error: 'Please verify your email first' }, 403);
 				}
 
-				const passwordHash = await hashPassword(password);
-				if (user.password !== passwordHash) {
+				if (!(await verifyPassword(password, user.password))) {
 					return jsonResponse({ error: 'Username or Password Error' }, 401);
 				}
 
@@ -740,8 +761,7 @@ export default {
 				if (!user) return jsonResponse({ error: 'User not found' }, 404);
 
 				// Verify Password (Double check for sensitive delete op)
-				const passwordHash = await hashPassword(password);
-				if (user.password !== passwordHash) {
+				if (!(await verifyPassword(password, user.password))) {
 					return jsonResponse({ error: 'Invalid password' }, 401);
 				}
 
@@ -970,9 +990,8 @@ export default {
 				const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE id = ?').bind(userPayload.id).first<DBUser>();
 				if (!user) return jsonResponse({ error: 'User not found' }, 404);
 
-				// 验证旧密码
-				const oldHash = await hashPassword(old_password);
-				if (oldHash !== user.password) return jsonResponse({ error: 'Current password is incorrect' }, 401);
+			// 验证旧密码
+				if (!(await verifyPassword(old_password, user.password))) return jsonResponse({ error: 'Current password is incorrect' }, 401);
 
 				// 若开启了 2FA，需要验证
 				if (user.totp_enabled) {
@@ -1008,6 +1027,7 @@ export default {
 				if (!new_email) return jsonResponse({ error: 'Missing parameters' }, 400);
 
 				if (new_email.length > 50) return jsonResponse({ error: 'Email too long (Max 50 chars)' }, 400);
+				if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(new_email)) return jsonResponse({ error: 'Invalid email format' }, 400);
 
 				const user_id = userPayload.id;
 
@@ -1043,7 +1063,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE id = ?').b
 				const verifyLink = `${baseUrl}/api/verify-email-change?token=${token}`;
 				const emailHtml = `
 					<h1>确认更换邮箱</h1>
-					<p>请点击下方链接确认将您的邮箱更换为 ${new_email}：</p>
+					<p>请点击下方链接确认将您的邮箱更换为 ${escapeHtml(new_email)}：</p>
 					<a href="${verifyLink}">确认更换</a>
 				`;
 
@@ -1090,6 +1110,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				}
 				if (email) {
 					if (email.length > 50) return jsonResponse({ error: 'Email too long (Max 50 chars)' }, 400);
+					if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonResponse({ error: 'Invalid email format' }, 400);
 					await env.cfwforum_db.prepare('UPDATE users SET email = ? WHERE id = ?').bind(email, id).run();
 				}
 				if (avatar_url !== undefined) {
@@ -1130,11 +1151,11 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 					if (notifyUsername && notifyUsername.value === '1') {
 						const user = await env.cfwforum_db.prepare('SELECT email, username FROM users WHERE id = ?').bind(id).first<{email:string;username:string}>();
 						if (user) {
-							const emailHtml = `
-								<h1>用户名已修改</h1>
-								<p>您的用户名已被管理员修改为 <strong>${username}</strong>。</p>
-								<p>如有疑问，请联系管理员。</p>
-							`;
+						const emailHtml = `
+							<h1>用户名已修改</h1>
+							<p>您的用户名已被管理员修改为 <strong>${escapeHtml(username)}</strong>。</p>
+							<p>如有疑问，请联系管理员。</p>
+						`;
 							ctx.waitUntil(sendEmail(user.email, '您的用户名已修改', emailHtml, env).catch(console.error));
 						}
 					}
@@ -1268,9 +1289,9 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				if (setting && setting.value === '1') {
 					const user = await env.cfwforum_db.prepare('SELECT email, username FROM users WHERE id = ?').bind(id).first<{email:string;username:string}>();
 					if (!user) throw new Error('User unexpectedly missing');
-					const emailHtml = `
+				const emailHtml = `
 						<h1>账户已验证</h1>
-						<p>您的账户 (用户名: <strong>${user.username}</strong>) 已通过管理员手动验证。</p>
+						<p>您的账户 (用户名: <strong>${escapeHtml(user.username)}</strong>) 已通过管理员手动验证。</p>
 						<p>您现在可以登录并使用所有功能。</p>
 					`;
 					ctx.waitUntil(sendEmail(user.email as string, '您的账户已通过验证', emailHtml, env).catch(console.error));
@@ -1303,7 +1324,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				const baseUrl = getBaseUrl();
 				const verifyLink = `${baseUrl}/api/verify?token=${token}`;
 				const emailHtml = `
-					<h1>欢迎加入论坛，${user.username}！</h1>
+					<h1>欢迎加入论坛，${escapeHtml(user.username)}！</h1>
 					<p>请点击下方链接验证您的邮箱地址：</p>
 					<a href="${verifyLink}">验证邮箱</a>
 					<p>如果您未请求此操作，请忽略此邮件。</p>
@@ -1370,7 +1391,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 					if (setting && setting.value === '1') {
 						const emailHtml = `
 							<h1>账户已删除</h1>
-							<p>您的账户 (用户名: <strong>${userToDelete.username}</strong>) 已被管理员删除。</p>
+							<p>您的账户 (用户名: <strong>${escapeHtml(userToDelete.username as string)}</strong>) 已被管理员删除。</p>
 							<p>如果您认为这是误操作，请联系管理员。</p>
 						`;
 						ctx.waitUntil(sendEmail(userToDelete.email as string, '您的账户已被删除', emailHtml, env).catch(console.error));
@@ -1523,12 +1544,22 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 					return jsonResponse({ error: 'Invalid action' }, 400);
 				}
 
-				if (action === 'delete') {
+			if (action === 'delete') {
 					const post = await env.cfwforum_db.prepare('SELECT content, author_id FROM posts WHERE id = ?').bind(id).first();
 					if (post) {
+						// 删除帖子图片及该帖子下所有评论的图片
+						const imgDeletePromises: Promise<any>[] = [];
 						const imageUrls = extractImageUrls(post.content as string);
-						if (imageUrls.length > 0) {
-							ctx.waitUntil(Promise.all(imageUrls.map(u => deleteImage(env as unknown as S3Env, u, post.author_id as number))).catch(console.error));
+						imageUrls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, post.author_id as number)));
+						const postComments = await env.cfwforum_db.prepare('SELECT content, author_id FROM comments WHERE post_id = ?').bind(id).all();
+						if (postComments.results) {
+							for (const c of postComments.results) {
+								const urls = extractImageUrls(c.content as string);
+								urls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, c.author_id as number)));
+							}
+						}
+						if (imgDeletePromises.length > 0) {
+							ctx.waitUntil(Promise.all(imgDeletePromises).catch(err => console.error('Failed to delete post/comment images', err)));
 						}
 					}
 					await env.cfwforum_db.prepare('DELETE FROM likes WHERE post_id = ?').bind(id).run();
@@ -1615,12 +1646,21 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				const userPayload = await authenticate(request);
 				if (userPayload.role !== 'admin') return jsonResponse({ error: 'Unauthorized' }, 403);
 
-				// Delete images in post
+				// 删除帖子图片及该帖子下所有评论的图片
 				const post = await env.cfwforum_db.prepare('SELECT content, author_id FROM posts WHERE id = ?').bind(id).first();
 				if (post) {
+					const imgDeletePromises: Promise<any>[] = [];
 					const imageUrls = extractImageUrls(post.content as string);
-					if (imageUrls.length > 0) {
-						ctx.waitUntil(Promise.all(imageUrls.map(url => deleteImage(env as unknown as S3Env, url, post.author_id as number))).catch(err => console.error('Failed to delete post images', err)));
+					imageUrls.forEach(url => imgDeletePromises.push(deleteImage(env as unknown as S3Env, url, post.author_id as number)));
+					const postComments = await env.cfwforum_db.prepare('SELECT content, author_id FROM comments WHERE post_id = ?').bind(id).all();
+					if (postComments.results) {
+						for (const c of postComments.results) {
+							const urls = extractImageUrls(c.content as string);
+							urls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, c.author_id as number)));
+						}
+					}
+					if (imgDeletePromises.length > 0) {
+						ctx.waitUntil(Promise.all(imgDeletePromises).catch(err => console.error('Failed to delete post/comment images', err)));
 					}
 				}
 
@@ -1641,6 +1681,21 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 			try {
 				const userPayload = await authenticate(request);
 				if (userPayload.role !== 'admin') return jsonResponse({ error: 'Unauthorized' }, 403);
+
+				// 删除评论及其子评论中的图片附件
+				const commentsToDelete = await env.cfwforum_db.prepare(
+					'SELECT id, content, author_id FROM comments WHERE id = ? OR parent_id = ?'
+				).bind(id, id).all();
+				if (commentsToDelete.results && commentsToDelete.results.length > 0) {
+					const imgDeletePromises: Promise<any>[] = [];
+					for (const c of commentsToDelete.results) {
+						const urls = extractImageUrls(c.content as string);
+						urls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, c.author_id as number)));
+					}
+					if (imgDeletePromises.length > 0) {
+						ctx.waitUntil(Promise.all(imgDeletePromises).catch(err => console.error('Failed to delete comment images', err)));
+					}
+				}
 
 				// Delete the comment AND its children (orphans prevention)
 				await env.cfwforum_db.prepare('DELETE FROM comments WHERE parent_id = ?').bind(id).run();
@@ -1802,6 +1857,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				}
 
 				if (email.length > 50) return jsonResponse({ error: 'Email too long (Max 50 chars)' }, 400);
+				if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonResponse({ error: 'Invalid email format' }, 400);
 
 				if (username.length > 20) return jsonResponse({ error: 'Username too long (Max 20 chars)' }, 400);
 				if (isVisuallyEmpty(username)) return jsonResponse({ error: 'Username cannot be empty' }, 400);
@@ -1827,7 +1883,7 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				const verifyLink = `${baseUrl}/api/verify?token=${verificationToken}`;
 
 				const emailHtml = `
-					<h1>欢迎加入论坛，${username}！</h1>
+					<h1>欢迎加入论坛，${escapeHtml(username)}！</h1>
 					<p>请点击下方链接验证您的邮箱地址：</p>
 					<a href="${verifyLink}">验证邮箱</a>
 					<p>如果您未请求此操作，请忽略此邮件。</p>
@@ -1921,8 +1977,8 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 		// GET /posts
 		if (url.pathname === '/api/posts' && method === 'GET') {
 			try {
-				const limit = parseInt(url.searchParams.get('limit') || '20');
-				const offset = parseInt(url.searchParams.get('offset') || '0');
+				const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+				const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
 				const categoryId = url.searchParams.get('category_id');
 				const q = (url.searchParams.get('q') || url.searchParams.get('query') || '').trim();
 				const sortByRaw = (url.searchParams.get('sort_by') || 'time').trim().toLowerCase();
@@ -2096,10 +2152,19 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 					return jsonResponse({ error: 'Unauthorized' }, 403);
 				}
 
-				// Delete images in post
+				// 删除帖子图片及该帖子下所有评论的图片
+				const imgDeletePromises: Promise<any>[] = [];
 				const imageUrls = extractImageUrls(post.content as string);
-				if (imageUrls.length > 0) {
-					ctx.waitUntil(Promise.all(imageUrls.map(url => deleteImage(env as unknown as S3Env, url, userPayload.id))).catch(err => console.error('Failed to delete post images', err)));
+				imageUrls.forEach(url => imgDeletePromises.push(deleteImage(env as unknown as S3Env, url, userPayload.id)));
+				const postComments = await env.cfwforum_db.prepare('SELECT content, author_id FROM comments WHERE post_id = ?').bind(id).all();
+				if (postComments.results) {
+					for (const c of postComments.results) {
+						const urls = extractImageUrls(c.content as string);
+						urls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, c.author_id as number)));
+					}
+				}
+				if (imgDeletePromises.length > 0) {
+					ctx.waitUntil(Promise.all(imgDeletePromises).catch(err => console.error('Failed to delete post/comment images', err)));
 				}
 
 				await env.cfwforum_db.prepare('DELETE FROM likes WHERE post_id = ?').bind(id).run();
@@ -2213,13 +2278,28 @@ const user = await env.cfwforum_db.prepare('SELECT * FROM users WHERE email_chan
 				const userPayload = await authenticate(request);
 
 				// Fetch comment to check ownership
-				const comment = await env.cfwforum_db.prepare('SELECT author_id FROM comments WHERE id = ?').bind(id).first();
+				const comment = await env.cfwforum_db.prepare('SELECT author_id, content FROM comments WHERE id = ?').bind(id).first();
 
 				if (!comment) return jsonResponse({ error: 'Comment not found' }, 404);
 
 				// Allow deletion if user is author OR admin
 				if (comment.author_id !== userPayload.id && userPayload.role !== 'admin') {
 					return jsonResponse({ error: 'Unauthorized' }, 403);
+				}
+
+				// 删除评论及其子评论中的图片附件
+				const commentsToDelete = await env.cfwforum_db.prepare(
+					'SELECT id, content, author_id FROM comments WHERE id = ? OR parent_id = ?'
+				).bind(id, id).all();
+				if (commentsToDelete.results && commentsToDelete.results.length > 0) {
+					const imgDeletePromises: Promise<any>[] = [];
+					for (const c of commentsToDelete.results) {
+						const urls = extractImageUrls(c.content as string);
+						urls.forEach(u => imgDeletePromises.push(deleteImage(env as unknown as S3Env, u, c.author_id as number)));
+					}
+					if (imgDeletePromises.length > 0) {
+						ctx.waitUntil(Promise.all(imgDeletePromises).catch(err => console.error('Failed to delete comment images', err)));
+					}
 				}
 
 				// Delete the comment AND its children (orphans prevention)
