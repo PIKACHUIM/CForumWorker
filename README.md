@@ -79,8 +79,7 @@
 2. 点击 **New repository secret**，添加以下密钥：
 
 | Secret 名称 | 值 | 描述 | 是否必需 |
-| Secret 名称 | 值 | 描述 | 是否必需 |
-|-----------|----|----|----||
+|-----------|----|----|-----|
 | `CF_API_TOKEN` | Cloudflare API Token | [创建CF_API_TOKEN](https://dash.cloudflare.com/profile/api-tokens) | 必需 |
 | `CF_ACCOUNT_ID` | 你的 Cloudflare Account ID | [查看CF_ACCOUNT_ID](https://dash.cloudflare.com/caching/overview) | 必需 |
 | `JWT_SECRET` | 随机字符串 | `head -c 32 /dev/urandom \| base64` | 必需 |
@@ -93,10 +92,7 @@
 | `SMTP_USER` | SMTP 用户名 | 例如：`noreply@example.com` | 非必需，未配置则无法发送邮件 |
 | `SMTP_PASS` | SMTP 密码 | SMTP 登录密码或授权码 | 非必需，未配置则无法发送邮件 |
 | `SMTP_FROM` | 发件人邮箱地址 | 例如：`noreply@example.com` | 非必需，未配置则无法发送邮件 |
-| `SMTP_FROM_NAME` | 发件人显示名称 | 例如：`cfwforum`（未设置则使用
-| `BASE_URL` | 站点 URL | 例如：`https://forum.adysec.com`（未设置则自动使用当前请求域名） | 非必需，未配置则邮件异常 |
-| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile Site Key | [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) | 非必需，未配置则使用Turnstile |
-| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile Secret | [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) | 非必需，未配置则使用Turnstile |
+| `SMTP_FROM_NAME` | 发件人显示名称 | 例如：`cfwforum`（未设置则使用"论坛管理员"） | 非必需，未配置则无法发送邮件 |
 <img width="2244" height="1350" alt="图片" src="https://github.com/user-attachments/assets/77b109a9-ebb6-4e9d-a660-0828e28c5bd1" />
 
 #### 第四步：手动触发部署
