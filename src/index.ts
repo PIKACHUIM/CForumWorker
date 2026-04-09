@@ -83,7 +83,7 @@ function hasInvisibleCharacters(str: string): boolean {
 }
 
 function hasRestrictedKeywords(username: string): boolean {
-	const restricted = ['管理', 'admin', 'sudo', 'test'];
+	const restricted = ['管理员', '管理', 'administrator', 'admin', 'sudo', 'root', 'system', 'official', '官方', '客服', '运营'];
 	return restricted.some(keyword => username.toLowerCase().includes(keyword.toLowerCase()));
 }
 
@@ -634,33 +634,16 @@ export default {
 			try {
 				const userPayload = await authenticate(request);
 				const body = await request.json() as any;
-				const { username, avatar_url, email_notifications } = body;
+				const { avatar_url, email_notifications } = body;
+				// 用户名不允许用户自行修改，忽略传入的 username 字段
 
 				const user_id = userPayload.id;
 
-				if (username) {
-					if (username.length > 20) return jsonResponse({ error: 'Username too long (Max 20 chars)' }, 400);
-					if (isVisuallyEmpty(username)) return jsonResponse({ error: 'Username cannot be empty' }, 400);
-					if (hasInvisibleCharacters(username)) return jsonResponse({ error: 'Username contains invalid invisible characters' }, 400);
-					if (hasControlCharacters(username)) return jsonResponse({ error: 'Username contains invalid control characters' }, 400);
-					if (hasRestrictedKeywords(username)) return jsonResponse({ error: 'Username contains restricted keywords' }, 400);
-
-					// Check Uniqueness
-					const existingUser = await env.cfwforum_db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').bind(username, user_id).first<{id:number}>();
-					if (existingUser) {
-						return jsonResponse({ error: 'Username already taken' }, 409);
-					}
-				}
-
 				// Fetch current user
 				const currentUser = await env.cfwforum_db.prepare('SELECT * FROM users WHERE id = ?').bind(user_id).first<DBUser>();
-			if (!currentUser) return jsonResponse({ error: 'User not found' }, 404);
 				if (!currentUser) return jsonResponse({ error: 'User not found' }, 404);
 
-				let newUsername = currentUser.username;
-				if (username !== undefined) {
-					newUsername = username;
-				}
+				const newUsername = currentUser.username;
 
 				let newAvatarUrl = currentUser.avatar_url;
 				if (avatar_url !== undefined) {

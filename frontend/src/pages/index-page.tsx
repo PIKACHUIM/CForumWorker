@@ -797,10 +797,10 @@ export function IndexPage() {
 						<Card>
 							<CardContent className="py-10 text-center">
 								<span className="text-4xl block mb-3">🌸</span>
-								<p className="text-sm text-muted-foreground">{t.noPosts}</p>
+					<p className="text-sm text-muted-foreground">{t.noPosts}</p>
 							</CardContent>
 						</Card>
-				} : viewMode === 'list' ? (
+				) : viewMode === 'list' ? (
 					<div className="space-y-3">
 					{posts.map((p) => {
 						const coverUrl = getCoverImageUrl(p.content || '');

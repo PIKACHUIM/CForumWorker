@@ -11,7 +11,6 @@ import { Separator } from '@/components/ui/separator';
 import { apiFetch, getSecurityHeaders } from '@/lib/api';
 import { getUser, logout, setUser, type User } from '@/lib/auth';
 import { useI18n } from '@/hooks/use-i18n';
-import { validateText } from '@/lib/validators';
 
 export function SettingsPage() {
 	const [user, setUserState] = React.useState<User | null>(() => getUser());
@@ -19,7 +18,6 @@ export function SettingsPage() {
 	const [loading, setLoading] = React.useState(false);
 	const [error, setError] = React.useState('');
 
-	const [username, setUsername] = React.useState(user?.username || '');
 	const [avatarUrl, setAvatarUrl] = React.useState(user?.avatar_url || '');
 	const [emailNotifications, setEmailNotifications] = React.useState<boolean>(user?.email_notifications !== false);
 
@@ -48,9 +46,6 @@ export function SettingsPage() {
 	async function saveProfile() {
 		if (!user) return;
 		setError('');
-		const err = username ? validateText(username, t.usernameLabel) : null;
-		if (err) return setError(err);
-		if (username.length > 20) return setError(t.usernameTooLong);
 		if (avatarUrl && avatarUrl.length > 500) return setError(t.avatarUrlTooLong);
 
 		setLoading(true);
@@ -59,7 +54,6 @@ export function SettingsPage() {
 				method: 'POST',
 				headers: getSecurityHeaders('POST'),
 				body: JSON.stringify({
-					username,
 					avatar_url: avatarUrl,
 					email_notifications: emailNotifications
 				})
@@ -211,16 +205,19 @@ export function SettingsPage() {
 					<CardTitle>{t.profileCard}</CardTitle>
 				</CardHeader>
 					<CardContent className="space-y-4">
-						<div className="grid gap-4 sm:grid-cols-2">
-						<div className="space-y-2">
-							<Label htmlFor="profile-username">{t.usernameLabel}</Label>
-							<Input id="profile-username" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={20} />
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="profile-avatar">{t.avatarUrl}</Label>
-								<Input id="profile-avatar" value={avatarUrl || ''} onChange={(e) => setAvatarUrl(e.target.value)} />
-							</div>
-						</div>
+				<div className="grid gap-4 sm:grid-cols-2">
+				<div className="space-y-2">
+					<Label>{t.usernameLabel}</Label>
+					<div className="h-10 flex items-center px-3 rounded-xl border-2 border-border bg-muted/50 text-sm text-muted-foreground select-none">
+						{user?.username}
+					</div>
+					<p className="text-xs text-muted-foreground">用户名注册后不可修改</p>
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="profile-avatar">{t.avatarUrl}</Label>
+						<Input id="profile-avatar" value={avatarUrl || ''} onChange={(e) => setAvatarUrl(e.target.value)} />
+					</div>
+				</div>
 
 					<div className="space-y-2">
 						<Label htmlFor="avatar-file">{t.uploadAvatar}</Label>

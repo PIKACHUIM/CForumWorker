@@ -152,8 +152,8 @@ export function SiteHeader({
 													referrerPolicy="no-referrer"
 												/>
 											) : (
-												<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white text-[10px]">
-													<UserIcon className="h-4 w-4" />
+						<span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sakura to-lavender text-white">
+							<UserIcon className="h-5 w-5" />
 												</span>
 											)}
 										</span>
