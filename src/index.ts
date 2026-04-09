@@ -203,17 +203,25 @@ export default {
 			});
 		}
 
-		// IP 地区检测（禁止区域）
-		const blockedRegionsSetting = await env.cfwforum_db.prepare("SELECT value FROM settings WHERE key = 'site_blocked_regions'").first<DBSetting>().catch(() => null);
+		// IP 地区检测（白名单 + 黑名单）
+		const [allowedRegionsSetting, blockedRegionsSetting] = await Promise.all([
+			env.cfwforum_db.prepare("SELECT value FROM settings WHERE key = 'site_allowed_regions'").first<DBSetting>().catch(() => null),
+			env.cfwforum_db.prepare("SELECT value FROM settings WHERE key = 'site_blocked_regions'").first<DBSetting>().catch(() => null),
+		]);
+		const country = (request.cf?.country as string | undefined) || '';
+		const blockPage = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>访问受限</title></head><body style="font-family:sans-serif;text-align:center;padding:80px;background:#fff9fb"><h1 style="color:#e879a0">🚫 访问受限</h1><p>很抱歉，您所在的地区无法访问本站。</p><p style="color:#999">Access from your region is not allowed.</p></body></html>`;
+		// 白名单：配置了允许区域时，不在白名单内的全部拒绝（country 为空也拒绝）
+		if (allowedRegionsSetting && allowedRegionsSetting.value) {
+			const allowedRegions = allowedRegionsSetting.value.split(',').map((r: string) => r.trim().toUpperCase()).filter(Boolean);
+			if (allowedRegions.length > 0 && !allowedRegions.includes(country.toUpperCase())) {
+				return new Response(blockPage, { status: 403, headers: { 'Content-Type': 'text/html;charset=utf-8' } });
+			}
+		}
+		// 黑名单：命中则拒绝（country 为空时跳过）
 		if (blockedRegionsSetting && blockedRegionsSetting.value) {
 			const blockedRegions = blockedRegionsSetting.value.split(',').map((r: string) => r.trim().toUpperCase()).filter(Boolean);
-			const country = (request.cf?.country as string | undefined) || '';
 			if (country && blockedRegions.includes(country.toUpperCase())) {
-				// 只对页面请求返回禁止访问，API 请求也拦截
-				return new Response(
-					`<!DOCTYPE html><html><head><meta charset="utf-8"><title>访问受限</title></head><body style="font-family:sans-serif;text-align:center;padding:80px;background:#fff9fb"><h1 style="color:#e879a0">🚫 访问受限</h1><p>很抱歉，您所在的地区无法访问本站。</p><p style="color:#999">Access from your region is not allowed.</p></body></html>`,
-					{ status: 403, headers: { 'Content-Type': 'text/html;charset=utf-8' } }
-				);
+				return new Response(blockPage, { status: 403, headers: { 'Content-Type': 'text/html;charset=utf-8' } });
 			}
 		}
 
@@ -459,7 +467,8 @@ export default {
 					site_custom_css: settingsMap['site_custom_css'] || '',
 					site_custom_js: settingsMap['site_custom_js'] || '',
 					site_terms: settingsMap['site_terms'] || '',
-					site_privacy: settingsMap['site_privacy'] || '',
+				site_privacy: settingsMap['site_privacy'] || '',
+					site_allowed_regions: settingsMap['site_allowed_regions'] || '',
 					site_blocked_regions: settingsMap['site_blocked_regions'] || '',
 					site_post_rate_limit: settingsMap['site_post_rate_limit'] || '',
 					site_comment_rate_limit: settingsMap['site_comment_rate_limit'] || '',
@@ -496,6 +505,7 @@ export default {
 					site_custom_js: '',
 					site_terms: '',
 					site_privacy: '',
+					site_allowed_regions: '',
 					site_blocked_regions: '',
 					site_post_rate_limit: '',
 					site_comment_rate_limit: '',
@@ -541,7 +551,7 @@ export default {
 					'site_title', 'site_description', 'site_primary_color', 'site_favicon_url',
 					'site_announcement', 'site_icp', 'site_footer_html', 'site_bg_image',
 					'site_bg_opacity', 'site_custom_css', 'site_custom_js', 'site_terms',
-					'site_privacy', 'site_blocked_regions', 'site_post_rate_limit',
+				'site_privacy', 'site_allowed_regions', 'site_blocked_regions', 'site_post_rate_limit',
 					'site_comment_rate_limit', 'site_keyword_filter',
 					'turnstile_site_key'
 				];

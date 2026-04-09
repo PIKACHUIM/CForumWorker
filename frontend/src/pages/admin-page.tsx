@@ -927,8 +927,9 @@ site_primary_color: '#f43f8e',
 		site_terms: DEFAULT_TERMS,
 		site_privacy: DEFAULT_PRIVACY,
 		// 安全
+		site_allowed_regions: '',
 		site_blocked_regions: '',
-		site_post_rate_limit: '',
+		site_post_rate_limit: ',
 		site_comment_rate_limit: '',
 		site_keyword_filter: '',
 	});
@@ -965,6 +966,7 @@ site_primary_color: '#f43f8e',
 					site_icp: data.site_icp || '',
 					site_terms: data.site_terms || DEFAULT_TERMS,
 					site_privacy: data.site_privacy || DEFAULT_PRIVACY,
+					site_allowed_regions: data.site_allowed_regions || '',
 					site_blocked_regions: data.site_blocked_regions || '',
 					site_post_rate_limit: data.site_post_rate_limit || '',
 					site_comment_rate_limit: data.site_comment_rate_limit || '',
@@ -1230,15 +1232,25 @@ site_primary_color: '#f43f8e',
 			{/* ── 安全 ── */}
 			{activeSection === 'security' && (
 				<SettingSection icon="🔒" title="安全">
+				<div className="space-y-1.5">
+						<Label htmlFor="site_allowed_regions">允许访问区域（白名单）</Label>
+						<Input
+							id="site_allowed_regions"
+							value={form.site_allowed_regions}
+							onChange={e => set('site_allowed_regions', e.target.value)}
+							placeholder="CN（多个用英文逗号分隔，留空则不限制）"
+						/>
+						<p className="text-xs text-muted-foreground">使用 ISO 3166-1 alpha-2 国家代码。配置后，<strong>仅允许</strong>列表内的国家访问，其余全部返回 403（包括无法识别来源的请求）</p>
+					</div>
 					<div className="space-y-1.5">
-						<Label htmlFor="site_blocked_regions">禁止访问区域</Label>
+						<Label htmlFor="site_blocked_regions">禁止访问区域（黑名单）</Label>
 						<Input
 							id="site_blocked_regions"
 							value={form.site_blocked_regions}
 							onChange={e => set('site_blocked_regions', e.target.value)}
 							placeholder="CN, US（多个用英文逗号分隔）"
 						/>
-						<p className="text-xs text-muted-foreground">使用 ISO 3166-1 alpha-2 国家代码，命中则直接返回 403 禁止访问页面</p>
+					<p className="text-xs text-muted-foreground">使用 ISO 3166-1 alpha-2 国家代码，命中则直接返回 403 禁止访问页面（无法识别来源时不拦截）</p>
 					</div>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1.5">

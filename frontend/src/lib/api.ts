@@ -19,6 +19,7 @@ export type ForumConfig = {
 	site_custom_js?: string;
 	site_terms?: string;
 	site_privacy?: string;
+	site_allowed_regions?: string;
 	site_blocked_regions?: string;
 	site_post_rate_limit?: string;
 	site_comment_rate_limit?: string;
