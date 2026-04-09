@@ -33,7 +33,7 @@ export const onRequest: PagesFunction = async (context) => {
 			if (!isLocalDev) {
 				console.error('❌ WORKER_URL environment variable is not set for production!');
 				return Response.json(
-					{ error: 'Server misconfiguration: WORKER_URL is not configured' },
+					{ error: 'Server misconfiguration: WORKER_URL is not configured, now it is ' + workerUrl },
 					{ status: 503, headers: corsHeaders }
 				);
 			}
