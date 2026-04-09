@@ -32,9 +32,11 @@ function AnnouncementBanner({ html }: { html: string }) {
 }
 
 export function PageShell({
-	children
+	children,
+	toolbar
 }: {
 	children: React.ReactNode;
+	toolbar?: React.ReactNode;
 }) {
 	const [user, setUser] = React.useState<User | null>(() => getUser());
 	const { config } = useConfig();
@@ -119,7 +121,7 @@ export function PageShell({
 
 	return (
 		<div className="min-h-dvh">
-			<SiteHeader currentUser={user} onLogout={() => setUser(null)} config={config} />
+			<SiteHeader currentUser={user} onLogout={() => setUser(null)} config={config} toolbar={toolbar} />
 
 			{/* 站点公告横幅 - 顶栏下方 */}
 			{config?.site_announcement ? (
