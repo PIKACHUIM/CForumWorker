@@ -637,6 +637,18 @@ export function IndexPage() {
 		</div>
 	);
 
+	// 未登录时显示空白加载态，等待跳转
+	if (!user) {
+		return (
+			<PageShell>
+				<div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+					<span className="animate-spin-slow mr-2 text-xl">🌸</span>
+					跳转到登录页…
+				</div>
+			</PageShell>
+		);
+	}
+
 	return (
 		<PageShell toolbar={toolbar}>
 			<div className="space-y-6">
